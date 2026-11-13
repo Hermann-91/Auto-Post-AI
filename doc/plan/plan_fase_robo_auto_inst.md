@@ -20,8 +20,8 @@
 ## 2. Checklist de Fases & Status
 - [x] **Fase 1: Fundação, Domínio Multi-Tenant & Segurança Base (Auth + Turnstile + Rate Limit)**
   - Status: Concluído | Commit: `87ef1d1` (`0014602..87ef1d1`) (`feat(core): dominio multi-tenant, auth argon2/jwt, rate limit e turnstile`)
-- [ ] **Fase 2: Persistência (SQLAlchemy/Alembic), Docker/VPS & Storage R2/S3 com Cotas**
-  - Status: Pendente | Commit: `-`
+- [x] **Fase 2: Persistência (SQLAlchemy/Alembic), Docker/VPS & Storage R2/S3 com Cotas**
+  - Status: Concluído | Commit: `7f1ff9d` (`feat(infra): persistencia multi-conta, storage r2/s3 com cotas e docker vps`)
 - [ ] **Fase 3: Pipeline Determinístico de Mídia (Migração Refatorada de `midia/`)**
   - Status: Pendente | Commit: `-`
 - [ ] **Fase 4: Gateway OpenRouter (DeepSeek + Nano Banana), Prompts/RAG por Conta, Planejamento Semanal & Orçamento ($)**
@@ -56,12 +56,12 @@
 - **Mensagem do Commit:** `feat(core): dominio multi-tenant, auth argon2/jwt, rate limit e turnstile`
 
 ### Fase 2: Persistência, Docker/VPS & Storage R2/S3 com Cotas
-- **Arquivos (NEW):**
-  - `app/infra/db/` (`sessao.py`, `modelos_tenant.py`, `modelos_conteudo.py`, `repo_tenant_sql.py`, `repo_midia_sql.py`, `repo_post_custo_sql.py`), `alembic.ini`, `alembic/`
-  - `app/infra/storage/` (`s3_r2_adapter.py`, `local_storage_adapter.py`), `app/aplicacao/biblioteca/` (`servico_upload_cota.py`, `servico_limpeza.py`)
+- **Arquivos (NEW & MODIFY):**
+  - `app/infra/db/` (`sessao.py`, `modelos_tenant.py`, `modelos_conteudo.py`, `repo_tenant_sql.py`, `repo_conta_ig_sql.py`, `repo_midia_sql.py`, `repo_ia_rag_sql.py`, `repo_post_custo_sql.py`), `alembic.ini`, `alembic/` (`0001_estrutura_inicial.py`)
+  - `app/infra/storage/` (`s3_r2_adapter.py`, `local_storage_adapter.py`), `app/aplicacao/biblioteca/` (`dtos.py`, `servico_upload_cota.py`, `servico_limpeza.py`), `app/core/config.py`, `app/dominio/portas/repositorios_conteudo.py`, `app/api/dependencias/container_auth.py`, `app/api/rotas/health.py`
   - `Dockerfile`, `docker-compose.yml`, `Caddyfile`, `.env.example`, `.dockerignore`
   - `testes/unit/aplicacao/biblioteca/` (`test_servico_upload_cota.py`, `test_servico_limpeza.py`)
-  - `testes/integration/infra/db/` (`test_repo_tenant_sql.py`, `test_repo_midia_sql.py`, `test_repo_post_custo_sql.py`) e `testes/integration/infra/storage/test_s3_r2_adapter.py`
+  - `testes/integration/infra/db/` (`test_sessao.py`, `test_repo_tenant_sql.py`, `test_repo_conta_ig_sql.py`, `test_repo_midia_sql.py`, `test_repo_ia_rag_sql.py`, `test_repo_post_custo_sql.py`) e `testes/integration/infra/storage/` (`test_s3_r2_adapter.py`, `test_local_storage_adapter.py`)
 - **Responsabilidade & Funções:** Persistência multi-conta, upload na nuvem R2/S3 organizado em `originais/`, `processadas/`, `IA-Cria/`, `IA-Edita/`, validação de cota (250 mídias / GB), botão de curtida (`curtida_favorita`) e limpeza pós-postagem preservando favoritas.
 - **Quality Gate:** `pytest testes/unit/aplicacao/biblioteca testes/integration/infra/db testes/integration/infra/storage -v` e `docker compose config`
 - **Mensagem do Commit:** `feat(infra): persistencia multi-conta, storage r2/s3 com cotas e docker vps`
@@ -124,3 +124,4 @@
 - **Revisão de Escopo (2026-11-13):** Adicionado suporte a N contas Instagram por empresa com Persona/RAG/Biblioteca independentes; Strategy+DI para `IMAGE`/`CAROUSEL`/`REELS`/`STORIES`; storage principal em nuvem (Cloudflare R2/S3) com pastas `originais`, `processadas`, `IA-Cria`, `IA-Edita`, cota (250 itens/GB), `curtida_favorita` e limpeza pós-postagens protegendo favoritas; adicionada Aba de Planejamento Semanal Automatizado (busca web em cache + 2 etapas com estimativa `$`).
 - **Refatoração Modular Pré-Fase 1 (2026-11-13):** Estrutura quebrada em subpacotes (`core/seguranca/`, `dominio/{objetos_valor,entidades,portas}/`, `aplicacao/{auth,biblioteca,ia,publicacao}/`, `infra/{seguranca,memoria,db,storage,midia,ia,meta,drive}/`, `api/{dependencias,schemas,middlewares,rotas}/`) para garantir todos os arquivos `<= 200` linhas; explicitados casos de uso de auth, rotação/revogação de refresh tokens, dummy hash anti-timing no Argon2id, proteção Turnstile no registro e padronização com `ia/`, `meta/` e `drive/`.
 - **Fase 1 concluída em 2026-11-13:** Implementados `app/core`, `app/dominio`, `app/aplicacao/auth`, `app/infra/{seguranca,memoria}`, `app/api` e suíte espelhada em `testes/` (`40 passed`, `ruff` e `mypy --strict` em 88 arquivos sem erros). Observações para Fase 2: (1) `app/api/rotas/auth.py` está com 197 linhas — se crescer, extrair helpers de cookies para `app/api/rotas/cookies.py`; (2) trocar `InMemory*Repository` em `ContainerAuth` pelos adaptadores SQLAlchemy/Alembic e `RedisRateLimiter` real sem alterar `dominio/` nem `aplicacao/auth/`.
+- **Fase 2 concluída em 2026-11-13 (`7f1ff9d`):** Persistência SQLAlchemy Async + Alembic (`0001_estrutura_inicial`, `DateTimeUTC` para Postgres/SQLite), repositórios SQL isolados por `(empresa_id, conta_ig_id)` (`<= 174` linhas), storage `S3R2StorageAdapter` (SigV4 + `asyncio.to_thread`) e `LocalStorageAdapter`, casos de uso de biblioteca/cota/limpeza, integração condicional no `ContainerAuth` e `/readyz`, além de `Dockerfile` (multi-stage com `ffmpeg`), `docker-compose.yml` e `Caddyfile`. Quality Gate: `64 passed`, `ruff check .` e `mypy app` (`70 source files`) sem erros, `docker compose config -q` válido e 100% dos arquivos `<= 198` linhas. Observações para Fase 3: (1) `app/infra/midia/` deve implementar `MidiaStrategyPort` para `IMAGE`, `CAROUSEL`, `REELS` e `STORIES` refatorando `projeto_robo_instagram/midia/` sem strings/logos hardcoded; (2) `worker` no `docker-compose.yml` usa `profiles: ["worker"]` até criação de `app/worker/` na Fase 5; (3) `container_auth.py` e `auth.py` estão em 197 linhas — novos serviços de mídia/IA devem usar módulo separado em `app/api/dependencias/`.
