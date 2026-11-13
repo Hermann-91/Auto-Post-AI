@@ -10,7 +10,7 @@ from uuid import UUID
 from app.dominio.entidades.ia_rag import ConfigIAConta, FonteRAG, RegistroCustoIA
 from app.dominio.entidades.midia import MidiaBiblioteca
 from app.dominio.entidades.publicacao import PlanejamentoSemanal, Postagem
-from app.dominio.objetos_valor.enums_conteudo import PastaMidia
+from app.dominio.objetos_valor.enums_conteudo import PastaMidia, StatusPostagem
 
 
 class ConfigIARepositoryPort(Protocol):
@@ -25,6 +25,12 @@ class RagRepositoryPort(Protocol):
 
 class MidiaRepositoryPort(Protocol):
     async def salvar(self, midia: MidiaBiblioteca) -> MidiaBiblioteca: ...
+    async def buscar_por_id(
+        self,
+        empresa_id: UUID,
+        conta_ig_id: UUID,
+        midia_id: UUID,
+    ) -> MidiaBiblioteca | None: ...
     async def listar_por_conta(
         self,
         empresa_id: UUID,
@@ -53,6 +59,12 @@ class PostagemRepositoryPort(Protocol):
         conta_ig_id: UUID,
         postagem_id: UUID,
     ) -> Postagem | None: ...
+    async def listar_por_conta(
+        self,
+        empresa_id: UUID,
+        conta_ig_id: UUID,
+        status: StatusPostagem | None = None,
+    ) -> list[Postagem]: ...
     async def listar_agendadas_pendentes(self, ate_momento: datetime) -> list[Postagem]: ...
 
 

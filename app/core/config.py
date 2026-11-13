@@ -56,6 +56,28 @@ class Configuracoes(BaseSettings):
     turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
     turnstile_timeout_segundos: float = Field(default=5.0, ge=1.0, le=30.0)
 
+    # Banco de Dados (SQLAlchemy Async + Alembic)
+    database_url: SecretStr | None = None
+    db_echo: bool = False
+    db_pool_size: int = Field(default=10, ge=1, le=100)
+    db_max_overflow: int = Field(default=20, ge=0, le=100)
+
+    # Storage em Nuvem (Cloudflare R2 / S3) e Local (dev/test)
+    storage_backend: Literal["local", "s3"] = "local"
+    storage_local_dir: str = "./data/storage"
+    storage_local_base_url: str = "http://localhost:8000/media"
+    storage_bucket: str | None = None
+    storage_endpoint_url: str | None = None
+    storage_region: str = "auto"
+    storage_access_key_id: SecretStr | None = None
+    storage_secret_access_key: SecretStr | None = None
+    storage_public_base_url: str | None = None
+    storage_presigned_ttl_segundos: int = Field(default=3600, ge=60, le=604800)
+
+    # Cotas de Mídia da Biblioteca
+    cota_max_itens: int = Field(default=250, ge=1)
+    cota_max_bytes: int = Field(default=1073741824, ge=1048576)
+
     # Chaves efêmeras geradas apenas fora de produção quando não informadas
     _jwt_efemero: str | None = None
     _fernet_efemero: str | None = None
@@ -72,7 +94,24 @@ class Configuracoes(BaseSettings):
                 raise ValueError("TURNSTILE_SECRET_KEY é obrigatória com CAPTCHA_ENABLED=true.")
             if not self.cookie_secure:
                 raise ValueError("COOKIE_SECURE=True é obrigatório em produção.")
+            if self.database_url is None or not self.database_url.get_secret_value().strip():
+                raise ValueError("DATABASE_URL é obrigatória em produção.")
+            if self.storage_backend != "s3":
+                raise ValueError("STORAGE_BACKEND='s3' é obrigatório em produção.")
+        if self.storage_backend == "s3":
+            if not self.storage_bucket or not self.storage_bucket.strip():
+                raise ValueError("STORAGE_BUCKET é obrigatório com STORAGE_BACKEND='s3'.")
+            if self.storage_access_key_id is None or self.storage_secret_access_key is None:
+                raise ValueError("Credenciais S3/R2 são obrigatórias com STORAGE_BACKEND='s3'.")
         return self
+
+    def resolver_database_url(self) -> str:
+        """Retorna DATABASE_URL configurada ou fallback SQLite apenas fora de produção."""
+        if self.database_url is not None and self.database_url.get_secret_value().strip():
+            return self.database_url.get_secret_value().strip()
+        if self.app_env == "prod":
+            raise ValueError("DATABASE_URL é obrigatória em produção.")
+        return "sqlite+aiosqlite:///./robo_auto_inst_dev.db"
 
     def resolver_jwt_secret(self) -> str:
         """Retorna a chave JWT configurada ou uma chave efêmera apenas em dev/test."""

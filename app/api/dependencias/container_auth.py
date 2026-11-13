@@ -7,6 +7,7 @@ from typing import Annotated, Any, cast
 
 from fastapi import Depends, Request
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.aplicacao.auth import (
     AutenticarUsuarioUseCase,
@@ -29,6 +30,12 @@ from app.dominio.portas.seguranca import (
     RateLimiterPort,
     TokenJwtPort,
 )
+from app.infra.db.repo_tenant_sql import (
+    SqlEmpresaRepository,
+    SqlRefreshTokenRepository,
+    SqlUsuarioRepository,
+)
+from app.infra.db.sessao import criar_engine_async, criar_session_factory
 from app.infra.memoria import (
     InMemoryEmpresaRepository,
     InMemoryRefreshTokenRepository,
@@ -56,60 +63,67 @@ class ContainerAuth:
     captcha: CaptchaPort
     rate_limiter: RateLimiterPort
     redis_client: Any = None
+    db_engine: AsyncEngine | None = None
 
     async def fechar(self) -> None:
-        """Libera conexões externas (Redis) no encerramento da aplicação."""
+        """Libera conexões externas (Redis e pool SQL) no encerramento da aplicação."""
         if self.redis_client is not None:
             await self.redis_client.aclose()
+        if self.db_engine is not None:
+            await self.db_engine.dispose()
 
 
 def construir_container_auth(config: Configuracoes) -> ContainerAuth:
-    """Monta adaptadores concretos conforme ambiente (memória na Fase 1)."""
+    """Monta adaptadores concretos (SQLAlchemy + Redis em prod ou quando configurados)."""
     captcha: CaptchaPort
     if config.captcha_enabled and config.turnstile_secret_key is not None:
         captcha = CloudflareTurnstileAdapter(
-            secret_key=config.turnstile_secret_key.get_secret_value(),
-            verify_url=config.turnstile_verify_url,
-            timeout_segundos=config.turnstile_timeout_segundos,
+            config.turnstile_secret_key.get_secret_value(), config.turnstile_verify_url,
+            config.turnstile_timeout_segundos,
         )
     else:
         captcha = StubCaptchaAdapter(sempre_valido=True)
 
     redis_client: Any = None
-    rate_limiter: RateLimiterPort
     if config.redis_url:
         redis_client = Redis.from_url(config.redis_url, decode_responses=False)
-        rate_limiter = RedisRateLimiter(
-            redis_client=cast(ClienteRedisEvalPort, redis_client),
-            max_tentativas=config.rate_limit_max_tentativas,
-            janela_segundos=config.rate_limit_janela_segundos,
+        rate_limiter: RateLimiterPort = RedisRateLimiter(
+            cast(ClienteRedisEvalPort, redis_client), config.rate_limit_max_tentativas,
+            config.rate_limit_janela_segundos,
         )
     else:
         rate_limiter = InMemoryRateLimiter(
-            max_tentativas=config.rate_limit_max_tentativas,
-            janela_segundos=config.rate_limit_janela_segundos,
+            config.rate_limit_max_tentativas, config.rate_limit_janela_segundos
         )
+
+    db_engine: AsyncEngine | None = None
+    if config.database_url is not None or config.app_env == "prod":
+        db_engine = criar_engine_async(config)
+        sf = criar_session_factory(db_engine)
+        empresa_repo: EmpresaRepositoryPort = SqlEmpresaRepository(sf)
+        usuario_repo: UsuarioRepositoryPort = SqlUsuarioRepository(sf)
+        refresh_repo: RefreshTokenRepositoryPort = SqlRefreshTokenRepository(sf)
+    else:
+        empresa_repo = InMemoryEmpresaRepository()
+        usuario_repo = InMemoryUsuarioRepository()
+        refresh_repo = InMemoryRefreshTokenRepository()
 
     return ContainerAuth(
         config=config,
-        empresa_repo=InMemoryEmpresaRepository(),
-        usuario_repo=InMemoryUsuarioRepository(),
-        refresh_repo=InMemoryRefreshTokenRepository(),
+        empresa_repo=empresa_repo,
+        usuario_repo=usuario_repo,
+        refresh_repo=refresh_repo,
         hasher=Argon2idHasher(
-            time_cost=config.argon2_time_cost,
-            memory_cost=config.argon2_memory_cost_kib,
-            parallelism=config.argon2_parallelism,
+            config.argon2_time_cost, config.argon2_memory_cost_kib, config.argon2_parallelism
         ),
         tokens=JwtTokenService(
-            chave_secreta=config.resolver_jwt_secret(),
-            algoritmo=config.jwt_algoritmo,
-            issuer=config.jwt_issuer,
-            audience=config.jwt_audience,
-            access_minutos=config.access_token_minutos,
+            config.resolver_jwt_secret(), config.jwt_algoritmo, config.jwt_issuer,
+            config.jwt_audience, config.access_token_minutos,
         ),
         captcha=captcha,
         rate_limiter=rate_limiter,
         redis_client=redis_client,
+        db_engine=db_engine,
     )
 
 

@@ -1,0 +1,1 @@
+"""Testes de integração dos adaptadores de storage R2/S3 e local."""
