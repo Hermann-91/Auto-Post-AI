@@ -1,0 +1,17 @@
+# GrafLean AI Context Accelerator
+.graflean/
+
+# Ambiente Python e dependências
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Segredos e dados locais
+.env
+.env.*
+!.env.example
+outputs/

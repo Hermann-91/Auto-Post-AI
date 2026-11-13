@@ -1,0 +1,28 @@
+[project]
+name = "robo-auto-inst"
+version = "0.1.0"
+description = "Plataforma SaaS multi-tenant para criação e publicação no Instagram"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["testes"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["app", "testes"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "testes"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+mypy_path = "."
