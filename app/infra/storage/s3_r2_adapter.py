@@ -24,6 +24,12 @@ class ClienteS3Port(Protocol):
     ) -> str: ...
 
 
+class ClienteS3LeituraPort(Protocol):
+    """Porta segregada para leitura de objetos no S3/R2 sem quebrar mocks de escrita."""
+
+    def get_object(self, **kwargs: Any) -> dict[str, Any]: ...
+
+
 def criar_cliente_s3(
     access_key_id: str,
     secret_access_key: str,
@@ -78,6 +84,22 @@ class S3R2StorageAdapter:
             ContentType=content_type,
         )
         return await self.obter_url_publica(chave_limpa)
+
+    async def baixar_bytes(self, chave: str) -> bytes:
+        chave_limpa = _normalizar_chave(chave)
+        if not hasattr(self._client, "get_object"):
+            raise ErroValidacaoDominio("Cliente S3 configurado não suporta leitura.")
+        leitor = cast(ClienteS3LeituraPort, self._client)
+        resp = await asyncio.to_thread(
+            leitor.get_object,
+            Bucket=self._bucket,
+            Key=chave_limpa,
+        )
+        corpo = resp["Body"]
+        dados = await asyncio.to_thread(corpo.read)
+        if not isinstance(dados, (bytes, bytearray)):
+            raise ErroValidacaoDominio("Resposta inválida ao baixar objeto do storage.")
+        return bytes(dados)
 
     async def obter_url_publica(self, chave: str) -> str:
         chave_limpa = _normalizar_chave(chave)

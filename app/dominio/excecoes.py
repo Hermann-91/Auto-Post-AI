@@ -49,3 +49,7 @@ class ErroConflitoDados(ErroDominio):
 
 class ErroSegurancaInterna(ErroDominio):
     """Erro crítico de integridade criptográfica."""
+
+
+class ErroIntegracaoIA(ErroDominio):
+    """Falha de comunicação ou resposta inválida do provedor de IA."""

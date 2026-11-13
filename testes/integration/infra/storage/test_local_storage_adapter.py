@@ -17,9 +17,13 @@ async def test_local_storage_envia_le_e_remove_com_isolamento(tmp_path: Path) ->
     url = await adapter.enviar_bytes(chave, b"conteudo", "image/jpeg")
     assert url == f"https://api.local/media/{chave}"
     assert (tmp_path / chave).read_bytes() == b"conteudo"
+    assert await adapter.baixar_bytes(chave) == b"conteudo"
 
     await adapter.remover_objeto(chave)
     assert not (tmp_path / chave).exists()
+
+    with pytest.raises(ErroValidacaoDominio):
+        await adapter.baixar_bytes(chave)
 
 
 async def test_local_storage_bloqueia_path_traversal(tmp_path: Path) -> None:

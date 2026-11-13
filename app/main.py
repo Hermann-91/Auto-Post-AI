@@ -10,8 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.dependencias.container_auth import construir_container_auth
+from app.api.dependencias.container_ia import construir_container_ia
 from app.api.middlewares.seguranca_http import aplicar_headers_seguranca
-from app.api.rotas import auth, health
+from app.api.rotas import auth, contas_config, criacao, health, planejamento
 from app.core.config import Configuracoes, obter_configuracoes
 from app.core.logging_config import configurar_logging
 from app.dominio.excecoes import (
@@ -20,6 +21,7 @@ from app.dominio.excecoes import (
     ErroCotaExcedida,
     ErroCredenciaisInvalidas,
     ErroDominio,
+    ErroIntegracaoIA,
     ErroOrcamentoExcedido,
     ErroRateLimitExcedido,
     ErroTokenReutilizado,
@@ -36,6 +38,7 @@ _MAPA_STATUS_DOMINIO: dict[type[ErroDominio], int] = {
     ErroTransicaoEstado: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ErroCotaExcedida: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ErroOrcamentoExcedido: status.HTTP_402_PAYMENT_REQUIRED,
+    ErroIntegracaoIA: status.HTTP_502_BAD_GATEWAY,
 }
 
 
@@ -62,10 +65,12 @@ def criar_app(config: Configuracoes | None = None) -> FastAPI:
     configurar_logging()
     cfg = config or obter_configuracoes()
     container = construir_container_auth(cfg)
+    ia_container = construir_container_ia(cfg, container)
 
     @asynccontextmanager
     async def lifespan(aplicacao: FastAPI) -> AsyncIterator[None]:
         aplicacao.state.auth_container = container
+        aplicacao.state.ia_container = ia_container
         try:
             yield
         finally:
@@ -77,6 +82,7 @@ def criar_app(config: Configuracoes | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     aplicacao.state.auth_container = container
+    aplicacao.state.ia_container = ia_container
 
     aplicacao.add_middleware(
         CORSMiddleware,
@@ -90,6 +96,9 @@ def criar_app(config: Configuracoes | None = None) -> FastAPI:
 
     aplicacao.include_router(health.router)
     aplicacao.include_router(auth.router)
+    aplicacao.include_router(contas_config.router)
+    aplicacao.include_router(criacao.router)
+    aplicacao.include_router(planejamento.router)
     return aplicacao
 
 

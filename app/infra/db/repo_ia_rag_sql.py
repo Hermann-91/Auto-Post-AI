@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.dominio.entidades.ia_rag import ConfigIAConta, FonteRAG
@@ -124,6 +124,16 @@ class SqlRagRepository:
             modelos = (await session.scalars(stmt)).all()
             return [_para_rag(m) for m in modelos]
 
+    async def remover(self, empresa_id: UUID, conta_ig_id: UUID, fonte_id: UUID) -> bool:
+        async with self._sf() as session, session.begin():
+            stmt = delete(FonteRAGModel).where(
+                FonteRAGModel.id == fonte_id,
+                FonteRAGModel.empresa_id == empresa_id,
+                FonteRAGModel.conta_ig_id == conta_ig_id,
+            )
+            res = await session.execute(stmt)
+            return int(getattr(res, "rowcount", 0) or 0) > 0
+
 
 class SqlPlanejamentoRepository:
     """Persistência SQL de planejamentos semanais por conta Instagram."""
@@ -161,3 +171,20 @@ class SqlPlanejamentoRepository:
             )
             modelo = await session.scalar(stmt)
             return _para_planejamento(modelo) if modelo is not None else None
+
+    async def listar_por_conta(
+        self,
+        empresa_id: UUID,
+        conta_ig_id: UUID,
+    ) -> list[PlanejamentoSemanal]:
+        async with self._sf() as session:
+            stmt = (
+                select(PlanejamentoSemanalModel)
+                .where(
+                    PlanejamentoSemanalModel.empresa_id == empresa_id,
+                    PlanejamentoSemanalModel.conta_ig_id == conta_ig_id,
+                )
+                .order_by(PlanejamentoSemanalModel.semana_inicio.desc())
+            )
+            modelos = (await session.scalars(stmt)).all()
+            return [_para_planejamento(m) for m in modelos]

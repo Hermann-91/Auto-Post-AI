@@ -90,6 +90,9 @@ async def test_config_ia_rag_e_planejamento_por_conta(
     await rag_repo.salvar(fonte)
     assert len(await rag_repo.listar_por_conta(emp_id, conta_a)) == 1
     assert len(await rag_repo.listar_por_conta(emp_id, conta_b)) == 0
+    assert await rag_repo.remover(emp_id, conta_b, fonte.id) is False
+    assert await rag_repo.remover(emp_id, conta_a, fonte.id) is True
+    assert await rag_repo.listar_por_conta(emp_id, conta_a) == []
 
     plano = PlanejamentoSemanal(
         empresa_id=emp_id,
@@ -104,3 +107,5 @@ async def test_config_ia_rag_e_planejamento_por_conta(
     lido = await plan_repo.buscar_por_id(emp_id, conta_a, plano.id)
     assert lido is not None and lido.custo_estimado_usd == Decimal("0.0450")
     assert await plan_repo.buscar_por_id(emp_id, conta_b, plano.id) is None
+    assert len(await plan_repo.listar_por_conta(emp_id, conta_a)) == 1
+    assert await plan_repo.listar_por_conta(emp_id, conta_b) == []

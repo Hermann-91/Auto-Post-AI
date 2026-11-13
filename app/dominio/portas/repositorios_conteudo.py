@@ -21,6 +21,12 @@ class ConfigIARepositoryPort(Protocol):
 class RagRepositoryPort(Protocol):
     async def salvar(self, fonte: FonteRAG) -> FonteRAG: ...
     async def listar_por_conta(self, empresa_id: UUID, conta_ig_id: UUID) -> list[FonteRAG]: ...
+    async def remover(
+        self,
+        empresa_id: UUID,
+        conta_ig_id: UUID,
+        fonte_id: UUID,
+    ) -> bool: ...
 
 
 class MidiaRepositoryPort(Protocol):
@@ -49,6 +55,11 @@ class PlanejamentoRepositoryPort(Protocol):
         conta_ig_id: UUID,
         plano_id: UUID,
     ) -> PlanejamentoSemanal | None: ...
+    async def listar_por_conta(
+        self,
+        empresa_id: UUID,
+        conta_ig_id: UUID,
+    ) -> list[PlanejamentoSemanal]: ...
 
 
 class PostagemRepositoryPort(Protocol):
@@ -71,3 +82,10 @@ class PostagemRepositoryPort(Protocol):
 class CustoRepositoryPort(Protocol):
     async def registrar(self, registro: RegistroCustoIA) -> RegistroCustoIA: ...
     async def somar_mes_empresa(self, empresa_id: UUID, ano: int, mes: int) -> Decimal: ...
+    async def somar_mes_por_conta(
+        self,
+        empresa_id: UUID,
+        conta_ig_id: UUID,
+        ano: int,
+        mes: int,
+    ) -> Decimal: ...

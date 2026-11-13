@@ -27,6 +27,16 @@ class ClienteIAPort(Protocol):
     ) -> tuple[bytes, dict[str, Any]]: ...
 
 
+class ClienteVisaoPort(Protocol):
+    async def analisar_imagem(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        imagem_data_url: str,
+        modelo: str,
+    ) -> tuple[str, dict[str, Any]]: ...
+
+
 class PesquisaTendenciasPort(Protocol):
     async def buscar_tendencias(
         self,

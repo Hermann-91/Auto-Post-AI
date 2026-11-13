@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 from typing import cast
 
 import boto3
 import pytest
 from botocore.config import Config as BotoConfig
+from botocore.response import StreamingBody
 from botocore.stub import Stubber
 from pydantic import SecretStr
 
@@ -35,6 +37,11 @@ async def test_s3_r2_enviar_url_cdn_e_remover_com_stubber() -> None:
         {"ETag": '"abc"'},
         {"Bucket": "meu-bucket", "Key": chave, "Body": b"jpeg-bytes", "ContentType": "image/jpeg"},
     )
+    stubber.add_response(
+        "get_object",
+        {"Body": StreamingBody(BytesIO(b"jpeg-bytes"), len(b"jpeg-bytes"))},
+        {"Bucket": "meu-bucket", "Key": chave},
+    )
     stubber.add_response("delete_object", {}, {"Bucket": "meu-bucket", "Key": chave})
 
     adapter = S3R2StorageAdapter(
@@ -43,6 +50,7 @@ async def test_s3_r2_enviar_url_cdn_e_remover_com_stubber() -> None:
     with stubber:
         url = await adapter.enviar_bytes(chave, b"jpeg-bytes", "image/jpeg")
         assert url == f"https://cdn.exemplo.com/{chave}"
+        assert await adapter.baixar_bytes(chave) == b"jpeg-bytes"
         await adapter.remover_objeto(chave)
     stubber.assert_no_pending_responses()
 

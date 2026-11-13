@@ -127,3 +127,4 @@ async def test_custo_soma_mensal_inclusive_dezembro(
     )
     assert await repo.somar_mes_empresa(emp_id, 2026, 12) == Decimal("0.001250")
     assert await repo.somar_mes_empresa(emp_id, 2027, 1) == Decimal("0.020000")
+    assert await repo.somar_mes_por_conta(emp_id, conta_id, 2026, 12) == Decimal("0.001250")

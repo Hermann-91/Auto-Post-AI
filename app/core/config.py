@@ -78,6 +78,20 @@ class Configuracoes(BaseSettings):
     cota_max_itens: int = Field(default=250, ge=1)
     cota_max_bytes: int = Field(default=1073741824, ge=1048576)
 
+    # OpenRouter (Texto, Visão e Nano Banana) & Tendências Web
+    openrouter_api_key: SecretStr | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_timeout_segundos: float = Field(default=60.0, ge=5.0, le=300.0)
+    openrouter_site_url: str | None = None
+    openrouter_app_title: str = "Robo-Auto-Inst"
+    openrouter_modelo_texto_padrao: str = "deepseek/deepseek-v4-flash"
+    openrouter_modelo_texto_fallback: str = "openrouter/free"
+    openrouter_modelo_visao_padrao: str = "google/gemini-2.5-flash-lite"
+    openrouter_modelo_img_padrao: str = "google/gemini-3.1-flash-image"
+    tendencias_cache_ttl_horas: int = Field(default=48, ge=24, le=72)
+    tendencias_busca_url: str = "https://api.duckduckgo.com/"
+    tendencias_timeout_segundos: float = Field(default=10.0, ge=1.0, le=30.0)
+
     # Chaves efêmeras geradas apenas fora de produção quando não informadas
     _jwt_efemero: str | None = None
     _fernet_efemero: str | None = None

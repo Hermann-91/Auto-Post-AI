@@ -37,6 +37,12 @@ class LocalStorageAdapter:
         await asyncio.to_thread(self._gravar_sync, destino, conteudo)
         return f"{self._base_url}/{chave_limpa}"
 
+    async def baixar_bytes(self, chave: str) -> bytes:
+        _, destino = self._resolver_caminho(chave)
+        if not destino.exists():
+            raise ErroValidacaoDominio("Arquivo de mídia não encontrado no storage local.")
+        return await asyncio.to_thread(destino.read_bytes)
+
     async def obter_url_publica(self, chave: str) -> str:
         chave_limpa, _ = self._resolver_caminho(chave)
         return f"{self._base_url}/{chave_limpa}"

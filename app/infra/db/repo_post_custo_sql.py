@@ -12,15 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.dominio.entidades.ia_rag import RegistroCustoIA
 from app.dominio.entidades.publicacao import Postagem
-from app.dominio.excecoes import ErroConflitoDados
-from app.dominio.objetos_valor.enums_conteudo import (
-    StatusPostagem,
-    TipoMidia,
-)
-from app.infra.db.modelos_conteudo import (
-    PostagemModel,
-    RegistroCustoIAModel,
-)
+from app.dominio.excecoes import ErroConflitoDados, ErroValidacaoDominio
+from app.dominio.objetos_valor.enums_conteudo import StatusPostagem, TipoMidia
+from app.infra.db.modelos_conteudo import PostagemModel, RegistroCustoIAModel
 
 
 def _para_postagem(m: PostagemModel) -> Postagem:
@@ -157,12 +151,26 @@ class SqlCustoRepository:
             session.add(modelo)
         return _para_custo(modelo)
 
-    async def somar_mes_empresa(self, empresa_id: UUID, ano: int, mes: int) -> Decimal:
+    @staticmethod
+    def _intervalo_mes(ano: int, mes: int) -> tuple[datetime, datetime]:
+        if not 1 <= mes <= 12:
+            raise ErroValidacaoDominio("Mês deve estar entre 1 e 12.")
         inicio = datetime(ano, mes, 1, tzinfo=UTC)
-        if mes == 12:
-            fim = datetime(ano + 1, 1, 1, tzinfo=UTC)
-        else:
-            fim = datetime(ano, mes + 1, 1, tzinfo=UTC)
+        fim = (
+            datetime(ano + 1, 1, 1, tzinfo=UTC)
+            if mes == 12
+            else datetime(ano, mes + 1, 1, tzinfo=UTC)
+        )
+        return inicio, fim
+
+    async def _somar_periodo(
+        self,
+        empresa_id: UUID,
+        ano: int,
+        mes: int,
+        conta_ig_id: UUID | None = None,
+    ) -> Decimal:
+        inicio, fim = self._intervalo_mes(ano, mes)
         async with self._sf() as session:
             soma = func.coalesce(func.sum(RegistroCustoIAModel.custo_usd), Decimal("0"))
             stmt = select(soma).where(
@@ -170,5 +178,19 @@ class SqlCustoRepository:
                 RegistroCustoIAModel.criado_em >= inicio,
                 RegistroCustoIAModel.criado_em < fim,
             )
+            if conta_ig_id is not None:
+                stmt = stmt.where(RegistroCustoIAModel.conta_ig_id == conta_ig_id)
             total = await session.scalar(stmt)
             return Decimal(str(total if total is not None else "0"))
+
+    async def somar_mes_empresa(self, empresa_id: UUID, ano: int, mes: int) -> Decimal:
+        return await self._somar_periodo(empresa_id, ano, mes)
+
+    async def somar_mes_por_conta(
+        self,
+        empresa_id: UUID,
+        conta_ig_id: UUID,
+        ano: int,
+        mes: int,
+    ) -> Decimal:
+        return await self._somar_periodo(empresa_id, ano, mes, conta_ig_id=conta_ig_id)

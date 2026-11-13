@@ -117,3 +117,11 @@ class PlanejamentoSemanal:
     def concluir(self) -> None:
         validar_transicao_planejamento(self.status, StatusPlanejamento.CONCLUIDO)
         self.status = StatusPlanejamento.CONCLUIDO
+
+    def marcar_falha(self) -> None:
+        validar_transicao_planejamento(self.status, StatusPlanejamento.FALHA)
+        self.status = StatusPlanejamento.FALHA
+
+    def cancelar(self) -> None:
+        validar_transicao_planejamento(self.status, StatusPlanejamento.CANCELADO)
+        self.status = StatusPlanejamento.CANCELADO
