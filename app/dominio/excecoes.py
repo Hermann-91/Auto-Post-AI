@@ -53,3 +53,11 @@ class ErroSegurancaInterna(ErroDominio):
 
 class ErroIntegracaoIA(ErroDominio):
     """Falha de comunicação ou resposta inválida do provedor de IA."""
+
+
+class ErroIntegracaoMeta(ErroDominio):
+    """Falha de autenticação OAuth, container ou publicação na Meta Graph API."""
+
+
+class ErroLimitePublicacaoMeta(ErroIntegracaoMeta):
+    """Teto móvel de 24h de publicações (content_publishing_limit) atingido."""

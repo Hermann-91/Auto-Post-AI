@@ -56,7 +56,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    profiles: ["worker"]
     restart: unless-stopped
     env_file:
       - path: .env
@@ -65,7 +64,7 @@ services:
       APP_ENV: ${APP_ENV:-prod}
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://robo_app:devpass@db:5432/robo_auto_inst}
       REDIS_URL: ${REDIS_URL:-redis://:devredispass@redis:6379/0}
-    command: ["python", "-c", "import time; print('Worker pronto para Fase 5'); time.sleep(3600)"]
+    command: ["python", "-m", "app.worker"]
     depends_on:
       db:
         condition: service_healthy

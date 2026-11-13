@@ -66,3 +66,20 @@ async def test_conta_ig_isolamento_upsert_e_unicidade(
                 token_expira_em=datetime.now(UTC) + timedelta(days=10),
             )
         )
+
+    encontrada = await ig_repo.buscar_por_ig_user_id(emp1.id, "17841")
+    assert encontrada is not None and encontrada.id == conta.id
+    assert await ig_repo.buscar_por_ig_user_id(emp2.id, "17841") is None
+
+    conta_vencendo = ContaInstagram(
+        empresa_id=emp2.id,
+        ig_user_id="99900",
+        username="expirando",
+        access_token_enc="enc_exp",
+        token_expira_em=datetime.now(UTC) + timedelta(days=3),
+    )
+    await ig_repo.salvar(conta_vencendo)
+    renovaveis = await ig_repo.listar_para_renovacao_token(
+        datetime.now(UTC) + timedelta(days=10)
+    )
+    assert [c.id for c in renovaveis] == [conta_vencendo.id]

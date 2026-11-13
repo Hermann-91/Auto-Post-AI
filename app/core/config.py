@@ -92,6 +92,23 @@ class Configuracoes(BaseSettings):
     tendencias_busca_url: str = "https://api.duckduckgo.com/"
     tendencias_timeout_segundos: float = Field(default=10.0, ge=1.0, le=30.0)
 
+    # Meta Graph API (Instagram Login V1) & Worker de Agendamento
+    meta_app_id: str | None = None
+    meta_app_secret: SecretStr | None = None
+    meta_redirect_uri: str | None = None
+    meta_oauth_authorize_url: str = "https://www.instagram.com/oauth/authorize"
+    meta_oauth_token_url: str = "https://api.instagram.com/oauth/access_token"
+    meta_graph_base_url: str = "https://graph.instagram.com"
+    meta_graph_version: str = "v22.0"
+    meta_timeout_segundos: float = Field(default=30.0, ge=5.0, le=120.0)
+    meta_polling_intervalos_segundos: list[float] = Field(
+        default_factory=lambda: [3.0, 5.0, 10.0, 15.0, 15.0]
+    )
+    worker_poll_segundos: float = Field(default=15.0, ge=1.0, le=300.0)
+    worker_lock_ttl_segundos: int = Field(default=300, ge=30, le=3600)
+    worker_renovar_token_dias_antes: int = Field(default=10, ge=1, le=30)
+    worker_concorrencia_max: int = Field(default=3, ge=1, le=20)
+
     # Chaves efêmeras geradas apenas fora de produção quando não informadas
     _jwt_efemero: str | None = None
     _fernet_efemero: str | None = None
@@ -112,6 +129,8 @@ class Configuracoes(BaseSettings):
                 raise ValueError("DATABASE_URL é obrigatória em produção.")
             if self.storage_backend != "s3":
                 raise ValueError("STORAGE_BACKEND='s3' é obrigatório em produção.")
+            if self.meta_redirect_uri and not self.meta_redirect_uri.startswith("https://"):
+                raise ValueError("META_REDIRECT_URI deve usar HTTPS em produção.")
         if self.storage_backend == "s3":
             if not self.storage_bucket or not self.storage_bucket.strip():
                 raise ValueError("STORAGE_BUCKET é obrigatório com STORAGE_BACKEND='s3'.")

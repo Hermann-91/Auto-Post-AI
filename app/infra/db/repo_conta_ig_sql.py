@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -63,6 +64,32 @@ class SqlContaIGRepository:
                 select(ContaInstagramModel)
                 .where(ContaInstagramModel.empresa_id == empresa_id)
                 .order_by(ContaInstagramModel.criado_em.asc())
+            )
+            modelos = (await session.scalars(stmt)).all()
+            return [_para_conta_ig(m) for m in modelos]
+
+    async def buscar_por_ig_user_id(
+        self,
+        empresa_id: UUID,
+        ig_user_id: str,
+    ) -> ContaInstagram | None:
+        async with self._sf() as session:
+            stmt = select(ContaInstagramModel).where(
+                ContaInstagramModel.empresa_id == empresa_id,
+                ContaInstagramModel.ig_user_id == ig_user_id.strip(),
+            )
+            modelo = await session.scalar(stmt)
+            return _para_conta_ig(modelo) if modelo is not None else None
+
+    async def listar_para_renovacao_token(self, expira_antes: datetime) -> list[ContaInstagram]:
+        async with self._sf() as session:
+            stmt = (
+                select(ContaInstagramModel)
+                .where(
+                    ContaInstagramModel.ativa.is_(True),
+                    ContaInstagramModel.token_expira_em <= expira_antes,
+                )
+                .order_by(ContaInstagramModel.token_expira_em.asc())
             )
             modelos = (await session.scalars(stmt)).all()
             return [_para_conta_ig(m) for m in modelos]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from app.dominio.entidades.ia_rag import ConfigIAConta, FonteRAG
@@ -28,6 +29,23 @@ class InMemoryContaIGRepository:
 
     async def listar_por_empresa(self, empresa_id: UUID) -> list[ContaInstagram]:
         return [c for c in self._itens.values() if c.empresa_id == empresa_id]
+
+    async def buscar_por_ig_user_id(
+        self,
+        empresa_id: UUID,
+        ig_user_id: str,
+    ) -> ContaInstagram | None:
+        alvo = ig_user_id.strip()
+        for conta in self._itens.values():
+            if conta.empresa_id == empresa_id and conta.ig_user_id == alvo:
+                return conta
+        return None
+
+    async def listar_para_renovacao_token(self, expira_antes: datetime) -> list[ContaInstagram]:
+        contas = [
+            c for c in self._itens.values() if c.ativa and c.token_expira_em <= expira_antes
+        ]
+        return sorted(contas, key=lambda c: c.token_expira_em)
 
 
 class InMemoryConfigIARepository:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -35,3 +36,9 @@ class ContaIGRepositoryPort(Protocol):
     async def salvar(self, conta: ContaInstagram) -> ContaInstagram: ...
     async def buscar_por_id(self, empresa_id: UUID, conta_ig_id: UUID) -> ContaInstagram | None: ...
     async def listar_por_empresa(self, empresa_id: UUID) -> list[ContaInstagram]: ...
+    async def buscar_por_ig_user_id(
+        self,
+        empresa_id: UUID,
+        ig_user_id: str,
+    ) -> ContaInstagram | None: ...
+    async def listar_para_renovacao_token(self, expira_antes: datetime) -> list[ContaInstagram]: ...

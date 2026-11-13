@@ -53,6 +53,8 @@ class ProvedorAuthMetaPort(Protocol):
 
 
 class PublicadorMidiaStrategyPort(Protocol):
+    """Estratégia por formato Meta retornando (meta_media_id, meta_container_id)."""
+
     tipo_suportado: TipoMidia
 
     async def publicar(
@@ -61,7 +63,9 @@ class PublicadorMidiaStrategyPort(Protocol):
         token_descriptografado: str,
         postagem: Postagem,
         urls_publicas: list[str],
-    ) -> tuple[str, str]: ...
+    ) -> tuple[str, str]:
+        """Publica mídia na Meta e retorna (meta_media_id, meta_container_id)."""
+        ...
 
 
 class OrcamentoCheckerPort(Protocol):
