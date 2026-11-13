@@ -18,8 +18,8 @@
   7. **Espelhamento de Testes:** Todo módulo em `app/<camada>/<subpacote>/<arquivo>.py` deve possuir teste espelhado em `testes/{unit,integration}/<camada>/<subpacote>/test_<arquivo>.py` (`<= 200` linhas).
 
 ## 2. Checklist de Fases & Status
-- [ ] **Fase 1: Fundação, Domínio Multi-Tenant & Segurança Base (Auth + Turnstile + Rate Limit)**
-  - Status: Pendente | Commit: `-`
+- [x] **Fase 1: Fundação, Domínio Multi-Tenant & Segurança Base (Auth + Turnstile + Rate Limit)**
+  - Status: Concluído | Commit: `87ef1d1` (`0014602..87ef1d1`) (`feat(core): dominio multi-tenant, auth argon2/jwt, rate limit e turnstile`)
 - [ ] **Fase 2: Persistência (SQLAlchemy/Alembic), Docker/VPS & Storage R2/S3 com Cotas**
   - Status: Pendente | Commit: `-`
 - [ ] **Fase 3: Pipeline Determinístico de Mídia (Migração Refatorada de `midia/`)**
@@ -123,3 +123,4 @@
 - **Planejamento inicial (2026-11-13):** Definida stack Python/FastAPI + PostgreSQL + Redis + Worker + Caddy HTTPS em Docker para VPS; Cloudflare Turnstile no login; OpenRouter (`deepseek/deepseek-v4-flash` + Nano Banana); Instagram Login API com porta extensível; Storage HTTPS assinado no MVP com porta para R2/S3.
 - **Revisão de Escopo (2026-11-13):** Adicionado suporte a N contas Instagram por empresa com Persona/RAG/Biblioteca independentes; Strategy+DI para `IMAGE`/`CAROUSEL`/`REELS`/`STORIES`; storage principal em nuvem (Cloudflare R2/S3) com pastas `originais`, `processadas`, `IA-Cria`, `IA-Edita`, cota (250 itens/GB), `curtida_favorita` e limpeza pós-postagens protegendo favoritas; adicionada Aba de Planejamento Semanal Automatizado (busca web em cache + 2 etapas com estimativa `$`).
 - **Refatoração Modular Pré-Fase 1 (2026-11-13):** Estrutura quebrada em subpacotes (`core/seguranca/`, `dominio/{objetos_valor,entidades,portas}/`, `aplicacao/{auth,biblioteca,ia,publicacao}/`, `infra/{seguranca,memoria,db,storage,midia,ia,meta,drive}/`, `api/{dependencias,schemas,middlewares,rotas}/`) para garantir todos os arquivos `<= 200` linhas; explicitados casos de uso de auth, rotação/revogação de refresh tokens, dummy hash anti-timing no Argon2id, proteção Turnstile no registro e padronização com `ia/`, `meta/` e `drive/`.
+- **Fase 1 concluída em 2026-11-13:** Implementados `app/core`, `app/dominio`, `app/aplicacao/auth`, `app/infra/{seguranca,memoria}`, `app/api` e suíte espelhada em `testes/` (`40 passed`, `ruff` e `mypy --strict` em 88 arquivos sem erros). Observações para Fase 2: (1) `app/api/rotas/auth.py` está com 197 linhas — se crescer, extrair helpers de cookies para `app/api/rotas/cookies.py`; (2) trocar `InMemory*Repository` em `ContainerAuth` pelos adaptadores SQLAlchemy/Alembic e `RedisRateLimiter` real sem alterar `dominio/` nem `aplicacao/auth/`.
