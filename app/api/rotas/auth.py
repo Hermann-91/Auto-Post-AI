@@ -16,8 +16,14 @@ from app.api.dependencias.container_auth import (
     obter_renovar_uc,
 )
 from app.api.dependencias.usuario_atual import obter_usuario_atual
-from app.api.middlewares.seguranca_http import validar_origem_csrf
+from app.api.rotas.cookies import (
+    checar_csrf_cookie,
+    extrair_ip_cliente,
+    gravar_cookies_sessao,
+    limpar_cookies_sessao,
+)
 from app.api.schemas.auth import (
+    ConfigPublicaAuthResponse,
     LoginRequest,
     MensagemResponse,
     RegistroRequest,
@@ -28,7 +34,6 @@ from app.aplicacao.auth import (
     AutenticarUsuarioUseCase,
     EncerrarSessaoUseCase,
     LoginCmd,
-    ParTokensDTO,
     RegistrarUsuarioUseCase,
     RegistroUsuarioCmd,
     RenovarSessaoUseCase,
@@ -41,47 +46,6 @@ from app.dominio.portas.seguranca import PayloadAccessToken
 router = APIRouter(prefix="/auth", tags=["autenticacao"])
 
 
-def _extrair_ip(request: Request) -> str | None:
-    return request.client.host if request.client else None
-
-
-def _checar_csrf_cookie(
-    request: Request,
-    config: Annotated[Configuracoes, Depends(obter_config_app)],
-) -> None:
-    validar_origem_csrf(request, config)
-
-
-def _gravar_cookies_sessao(
-    response: Response,
-    tokens: ParTokensDTO,
-    cfg: Configuracoes,
-) -> None:
-    response.set_cookie(
-        key=cfg.cookie_access_nome,
-        value=tokens.access_token,
-        max_age=cfg.access_token_minutos * 60,
-        httponly=True,
-        secure=cfg.cookie_secure,
-        samesite=cfg.cookie_samesite,
-        path="/",
-    )
-    response.set_cookie(
-        key=cfg.cookie_refresh_nome,
-        value=tokens.refresh_token,
-        max_age=cfg.refresh_token_dias * 86400,
-        httponly=True,
-        secure=cfg.cookie_secure,
-        samesite=cfg.cookie_samesite,
-        path="/auth",
-    )
-
-
-def _limpar_cookies_sessao(response: Response, cfg: Configuracoes) -> None:
-    response.delete_cookie(key=cfg.cookie_access_nome, path="/")
-    response.delete_cookie(key=cfg.cookie_refresh_nome, path="/auth")
-
-
 def _to_usuario_response(dto: UsuarioAutenticadoDTO) -> UsuarioResponse:
     return UsuarioResponse(
         id=dto.id,
@@ -89,6 +53,17 @@ def _to_usuario_response(dto: UsuarioAutenticadoDTO) -> UsuarioResponse:
         email=dto.email,
         papel=dto.papel,
         ativo=dto.ativo,
+    )
+
+
+@router.get("/config", response_model=ConfigPublicaAuthResponse)
+async def obter_config_publica_auth(
+    cfg: Annotated[Configuracoes, Depends(obter_config_app)],
+) -> ConfigPublicaAuthResponse:
+    """Expõe parâmetros públicos do Turnstile para o painel web."""
+    return ConfigPublicaAuthResponse(
+        captcha_enabled=cfg.captcha_enabled,
+        turnstile_site_key=cfg.turnstile_site_key,
     )
 
 
@@ -107,10 +82,10 @@ async def registrar(
             email=str(payload.email),
             senha=payload.senha,
             token_captcha=payload.turnstile_token,
-            ip_remoto=_extrair_ip(request),
+            ip_remoto=extrair_ip_cliente(request),
         )
     )
-    _gravar_cookies_sessao(response, tokens, cfg)
+    gravar_cookies_sessao(response, tokens, cfg)
     return SessaoResponse(
         mensagem="Cadastro realizado com sucesso.",
         usuario=_to_usuario_response(tokens.usuario),
@@ -131,17 +106,17 @@ async def login(
             email=str(payload.email),
             senha=payload.senha,
             token_captcha=payload.turnstile_token,
-            ip_remoto=_extrair_ip(request),
+            ip_remoto=extrair_ip_cliente(request),
         )
     )
-    _gravar_cookies_sessao(response, tokens, cfg)
+    gravar_cookies_sessao(response, tokens, cfg)
     return SessaoResponse(
         mensagem="Login realizado com sucesso.",
         usuario=_to_usuario_response(tokens.usuario),
     )
 
 
-@router.post("/refresh", response_model=SessaoResponse, dependencies=[Depends(_checar_csrf_cookie)])
+@router.post("/refresh", response_model=SessaoResponse, dependencies=[Depends(checar_csrf_cookie)])
 async def refresh(
     request: Request,
     response: Response,
@@ -151,7 +126,7 @@ async def refresh(
     """Rotaciona o Refresh Token do cookie HttpOnly e renova a sessão."""
     token_bruto = request.cookies.get(cfg.cookie_refresh_nome)
     tokens = await caso_uso.executar(token_bruto)
-    _gravar_cookies_sessao(response, tokens, cfg)
+    gravar_cookies_sessao(response, tokens, cfg)
     return SessaoResponse(
         mensagem="Sessão renovada com sucesso.",
         usuario=_to_usuario_response(tokens.usuario),
@@ -161,7 +136,7 @@ async def refresh(
 @router.post(
     "/logout",
     response_model=MensagemResponse,
-    dependencies=[Depends(_checar_csrf_cookie)],
+    dependencies=[Depends(checar_csrf_cookie)],
 )
 async def logout(
     request: Request,
@@ -172,7 +147,7 @@ async def logout(
     """Revoga família do refresh token e limpa os cookies do navegador."""
     token_bruto = request.cookies.get(cfg.cookie_refresh_nome)
     await caso_uso.executar(token_bruto)
-    _limpar_cookies_sessao(response, cfg)
+    limpar_cookies_sessao(response, cfg)
     return MensagemResponse(mensagem="Sessão encerrada com sucesso.")
 
 

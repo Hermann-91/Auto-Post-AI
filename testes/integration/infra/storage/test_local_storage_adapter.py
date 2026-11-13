@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -30,3 +31,25 @@ async def test_local_storage_bloqueia_path_traversal(tmp_path: Path) -> None:
     adapter = LocalStorageAdapter(base_dir=tmp_path)
     with pytest.raises(ErroValidacaoDominio):
         await adapter.enviar_bytes("../../etc/passwd", b"x", "text/plain")
+
+
+async def test_local_storage_assina_e_valida_hmac(tmp_path: Path) -> None:
+    adapter = LocalStorageAdapter(
+        base_dir=tmp_path,
+        base_url="https://vps.local/media",
+        signing_secret="segredo-teste-hmac",
+        presigned_ttl_segundos=120,
+    )
+    chave = "emp1/ig1/originais/foto.jpg"
+    url = await adapter.enviar_bytes(chave, b"dados", "image/jpeg")
+    qs = parse_qs(urlparse(url).query)
+    exp = int(qs["exp"][0])
+    sig = qs["sig"][0]
+
+    caminho = adapter.validar_assinatura(chave, exp, sig)
+    assert caminho.read_bytes() == b"dados"
+
+    with pytest.raises(ErroValidacaoDominio):
+        adapter.validar_assinatura(chave, exp, "assinatura_falsa")
+    with pytest.raises(ErroValidacaoDominio):
+        adapter.validar_assinatura(chave, 1, sig)

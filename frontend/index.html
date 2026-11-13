@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Robo-Auto-Inst • Painel Multi-Conta</title>
+  <link rel="stylesheet" href="/painel/css/tokens.css" />
+  <link rel="stylesheet" href="/painel/css/styles.css" />
+</head>
+<body>
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <main id="auth-view" class="auth-wrapper">
+    <section class="glass-card auth-card">
+      <div class="auth-header">
+        <div>
+          <span class="badge">SaaS Instagram</span>
+          <h1>Robo-Auto-Inst</h1>
+          <p class="muted">Criação com IA, biblioteca inteligente e publicação oficial Meta.</p>
+        </div>
+        <button id="btn-tema-auth" type="button" class="btn-ghost" title="Alternar tema">◐</button>
+      </div>
+
+      <div class="tabs-inline" role="tablist">
+        <button id="tab-login" type="button" class="tab-btn active">Entrar</button>
+        <button id="tab-registro" type="button" class="tab-btn">Criar Conta</button>
+      </div>
+
+      <form id="form-login" class="stack">
+        <label>E-mail <input name="email" type="email" required autocomplete="email" /></label>
+        <label>Senha <input name="senha" type="password" required autocomplete="current-password" /></label>
+        <div id="turnstile-login" class="turnstile-box"></div>
+        <button type="submit" class="btn-primary">Entrar no Painel</button>
+      </form>
+
+      <form id="form-registro" class="stack hidden">
+        <label>Nome da Empresa <input name="nome_empresa" type="text" required minlength="2" /></label>
+        <label>E-mail Corporativo <input name="email" type="email" required autocomplete="email" /></label>
+        <label>Senha (mín. 8 caracteres)
+          <input name="senha" type="password" required minlength="8" autocomplete="new-password" />
+        </label>
+        <div id="turnstile-registro" class="turnstile-box"></div>
+        <button type="submit" class="btn-primary">Criar Empresa &amp; Entrar</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="app-view" class="app-shell hidden">
+    <header class="glass-bar topbar">
+      <div class="brand">
+        <strong>Robo-Auto-Inst</strong>
+        <span id="usuario-email" class="muted small"></span>
+      </div>
+      <div class="topbar-actions">
+        <label class="conta-picker">
+          <span class="small muted">Conta IG:</span>
+          <select id="select-conta"></select>
+        </label>
+        <button id="btn-conectar-meta" type="button" class="btn-outline">+ Conectar Instagram</button>
+        <button id="btn-tema-app" type="button" class="btn-ghost" title="Alternar tema">◐</button>
+        <button id="btn-logout" type="button" class="btn-ghost">Sair</button>
+      </div>
+    </header>
+
+    <nav class="nav-tabs" aria-label="Seções do painel">
+      <button type="button" class="nav-btn active" data-sec="sec-biblioteca">Biblioteca &amp; Cota</button>
+      <button type="button" class="nav-btn" data-sec="sec-planejamento">Planejamento &amp; Posts</button>
+      <button type="button" class="nav-btn" data-sec="sec-config">Persona, RAG &amp; Custos ($)</button>
+    </nav>
+
+    <section id="sem-conta-aviso" class="glass-card aviso-vazio hidden">
+      <h2>Nenhuma conta Instagram conectada</h2>
+      <p class="muted">Conecte sua primeira conta Instagram Business/Creator via OAuth oficial da Meta para liberar biblioteca, planejamento semanal e agendamento.</p>
+      <button id="btn-conectar-meta-vazio" type="button" class="btn-primary">Conectar Instagram Agora</button>
+    </section>
+
+    <main id="conteudo-principal" class="container">
+      <section id="sec-biblioteca" class="painel-sec">
+        <div class="grid-2">
+          <article class="glass-card">
+            <h3>Cota da Conta &amp; Limpeza</h3>
+            <div class="progress-track"><div id="cota-itens-bar" class="progress-fill"></div></div>
+            <p id="cota-texto" class="small muted">Carregando cota...</p>
+            <div class="row-actions">
+              <button id="btn-limpar-pos" type="button" class="btn-warn">Limpar Mídias Pós-Postagem</button>
+              <span class="badge muted" title="Armazenamento padrão ativo no disco seguro da VPS">Storage: VPS / Nuvem</span>
+            </div>
+          </article>
+
+          <article class="glass-card">
+            <h3>Upload Direto (Compactação Automática)</h3>
+            <form id="form-upload" class="stack-sm">
+              <div class="row-actions">
+                <select name="pasta" id="upload-pasta">
+                  <option value="originais">originais/</option>
+                  <option value="processadas">processadas/</option>
+                  <option value="IA-Cria">IA-Cria/</option>
+                  <option value="IA-Edita">IA-Edita/</option>
+                </select>
+                <input type="file" name="arquivo" id="upload-arquivo" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" required />
+              </div>
+              <button type="submit" class="btn-primary">Enviar para Biblioteca</button>
+            </form>
+          </article>
+        </div>
+
+        <div class="glass-card">
+          <div class="row-between">
+            <div id="filtro-pastas" class="tabs-inline">
+              <button type="button" class="tab-btn active" data-pasta="">Todas</button>
+              <button type="button" class="tab-btn" data-pasta="originais">originais</button>
+              <button type="button" class="tab-btn" data-pasta="processadas">processadas</button>
+              <button type="button" class="tab-btn" data-pasta="IA-Cria">IA-Cria</button>
+              <button type="button" class="tab-btn" data-pasta="IA-Edita">IA-Edita</button>
+            </div>
+            <button id="btn-recarregar-bib" type="button" class="btn-ghost">Atualizar</button>
+          </div>
+          <div id="grid-midias" class="media-grid"></div>
+        </div>
+      </section>
+
+      <section id="sec-planejamento" class="painel-sec hidden">
+        <div class="grid-2">
+          <article class="glass-card">
+            <h3>Planejamento Semanal Automatizado (2 Etapas)</h3>
+            <form id="form-propor-plano" class="stack-sm">
+              <div class="row-actions">
+                <label>Início da Semana <input name="semana_inicio" type="date" required /></label>
+                <label>Qtd. Posts <input name="quantidade_posts" type="number" min="1" max="14" value="5" /></label>
+              </div>
+              <div class="row-actions">
+                <label>Nicho <input name="nicho" type="text" placeholder="Ex.: clínica estética" /></label>
+                <label>Região <input name="regiao" type="text" placeholder="Brasil" /></label>
+              </div>
+              <label>Objetivo <input name="objetivo_semana" type="text" value="crescimento orgânico e autoridade" /></label>
+              <label class="check"><input name="incluir_imagens_ia" type="checkbox" checked /> Gerar artes com Nano Banana</label>
+              <button type="submit" class="btn-primary">Etapa 1: Propor Grade &amp; Estimar ($)</button>
+            </form>
+          </article>
+
+          <article class="glass-card">
+            <h3>Criação Rápida com IA</h3>
+            <form id="form-criar-ia" class="stack-sm">
+              <div class="row-actions">
+                <select name="tipo_midia">
+                  <option value="IMAGE">IMAGE</option>
+                  <option value="CAROUSEL">CAROUSEL</option>
+                  <option value="REELS">REELS</option>
+                  <option value="STORIES">STORIES</option>
+                </select>
+                <input name="tema" type="text" placeholder="Tema do post" required />
+              </div>
+              <label class="check"><input name="gerar_imagem_ia" type="checkbox" /> Gerar imagem via Nano Banana</label>
+              <button type="submit" class="btn-outline">Gerar Rascunho IA</button>
+            </form>
+          </article>
+        </div>
+
+        <article class="glass-card">
+          <div class="row-between"><h3>Planos Semanais</h3><button id="btn-recarregar-planos" type="button" class="btn-ghost">Atualizar</button></div>
+          <div id="lista-planos" class="stack-sm"></div>
+        </article>
+
+        <article class="glass-card">
+          <div class="row-between"><h3>Postagens &amp; Agendamento</h3><button id="btn-recarregar-posts" type="button" class="btn-ghost">Atualizar</button></div>
+          <div id="lista-posts" class="stack-sm"></div>
+        </article>
+      </section>
+
+      <section id="sec-config" class="painel-sec hidden">
+        <div class="grid-2">
+          <article class="glass-card">
+            <h3>Orçamento Mensal &amp; Custos OpenRouter ($)</h3>
+            <div class="progress-track"><div id="orcamento-bar" class="progress-fill"></div></div>
+            <p id="orcamento-detalhe" class="small muted">Carregando orçamento...</p>
+          </article>
+
+          <article class="glass-card">
+            <h3>Persona &amp; Modelos da Conta</h3>
+            <form id="form-config-ia" class="stack-sm">
+              <label>Marca <input name="marca" type="text" /></label>
+              <label>Nicho <input name="nicho" type="text" /></label>
+              <label>Tom de Voz <input name="tom_voz" type="text" /></label>
+              <div class="row-actions">
+                <label>Modelo Texto <input name="modelo_texto_pref" type="text" required /></label>
+                <label>Modelo Imagem <input name="modelo_img_pref" type="text" required /></label>
+              </div>
+              <button type="submit" class="btn-primary">Salvar Persona &amp; Modelos</button>
+            </form>
+          </article>
+        </div>
+
+        <article class="glass-card">
+          <h3>Base de Conhecimento RAG da Conta</h3>
+          <form id="form-rag" class="row-actions">
+            <select name="tipo">
+              <option value="TEXTO">TEXTO</option>
+              <option value="FAQ">FAQ</option>
+              <option value="DOCUMENTO">DOCUMENTO</option>
+            </select>
+            <input name="titulo" type="text" placeholder="Título da fonte" required />
+            <input name="conteudo" type="text" placeholder="Conteúdo de referência da marca..." required />
+            <button type="submit" class="btn-primary">Indexar</button>
+          </form>
+          <div id="lista-rag" class="stack-sm"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/painel/js/app.js"></script>
+</body>
+</html>

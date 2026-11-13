@@ -60,3 +60,28 @@ def test_resolver_database_url_usa_fallback_sqlite_fora_de_producao() -> None:
         app_env="test", database_url=SecretStr("postgresql+asyncpg://u:p@db:5432/app")
     )
     assert cfg_custom.resolver_database_url() == "postgresql+asyncpg://u:p@db:5432/app"
+
+
+def test_producao_aceita_storage_local_apenas_com_https() -> None:
+    chave_fernet = Fernet.generate_key().decode("utf-8")
+    with pytest.raises(ValidationError):
+        Configuracoes(
+            app_env="prod",
+            jwt_secret_key=SecretStr("x" * 40),
+            fernet_keys=SecretStr(chave_fernet),
+            cookie_secure=True,
+            database_url=SecretStr("postgresql+asyncpg://u:p@db:5432/app"),
+            storage_backend="local",
+            storage_local_base_url="http://app.exemplo.com/media",
+        )
+
+    cfg_ok = Configuracoes(
+        app_env="prod",
+        jwt_secret_key=SecretStr("x" * 40),
+        fernet_keys=SecretStr(chave_fernet),
+        cookie_secure=True,
+        database_url=SecretStr("postgresql+asyncpg://u:p@db:5432/app"),
+        storage_backend="local",
+        storage_local_base_url="https://app.exemplo.com/media",
+    )
+    assert cfg_ok.storage_backend == "local"

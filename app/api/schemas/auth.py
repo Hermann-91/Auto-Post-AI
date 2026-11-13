@@ -51,3 +51,10 @@ class MensagemResponse(BaseModel):
     """Resposta simples com mensagem informativa."""
 
     mensagem: str
+
+
+class ConfigPublicaAuthResponse(BaseModel):
+    """Configuração pública de segurança consumida pelo painel web."""
+
+    captcha_enabled: bool
+    turnstile_site_key: str

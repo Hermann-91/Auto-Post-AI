@@ -37,4 +37,6 @@ def criar_storage_adapter(config: Configuracoes) -> StorageMidiaPort:
     return LocalStorageAdapter(
         base_dir=Path(config.storage_local_dir),
         base_url=config.storage_local_base_url,
+        signing_secret=f"local-media:{config.resolver_jwt_secret()}",
+        presigned_ttl_segundos=config.storage_presigned_ttl_segundos,
     )

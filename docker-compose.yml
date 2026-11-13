@@ -65,6 +65,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://robo_app:devpass@db:5432/robo_auto_inst}
       REDIS_URL: ${REDIS_URL:-redis://:devredispass@redis:6379/0}
     command: ["python", "-m", "app.worker"]
+    volumes:
+      - local_storage:/app/data/storage
     depends_on:
       db:
         condition: service_healthy

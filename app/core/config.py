@@ -46,12 +46,14 @@ class Configuracoes(BaseSettings):
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     cookie_access_nome: str = "access_token"
     cookie_refresh_nome: str = "refresh_token"
+    cookie_csrf_nome: str = "csrf_token"
     rate_limit_max_tentativas: int = Field(default=5, ge=1)
     rate_limit_janela_segundos: int = Field(default=900, ge=10)
     redis_url: str | None = None
 
     # Cloudflare Turnstile
     captcha_enabled: bool = False
+    turnstile_site_key: str = ""
     turnstile_secret_key: SecretStr | None = None
     turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
     turnstile_timeout_segundos: float = Field(default=5.0, ge=1.0, le=30.0)
@@ -127,8 +129,13 @@ class Configuracoes(BaseSettings):
                 raise ValueError("COOKIE_SECURE=True é obrigatório em produção.")
             if self.database_url is None or not self.database_url.get_secret_value().strip():
                 raise ValueError("DATABASE_URL é obrigatória em produção.")
-            if self.storage_backend != "s3":
-                raise ValueError("STORAGE_BACKEND='s3' é obrigatório em produção.")
+            if (
+                self.storage_backend == "local"
+                and not self.storage_local_base_url.startswith("https://")
+            ):
+                raise ValueError(
+                    "STORAGE_LOCAL_BASE_URL deve usar HTTPS com STORAGE_BACKEND='local'."
+                )
             if self.meta_redirect_uri and not self.meta_redirect_uri.startswith("https://"):
                 raise ValueError("META_REDIRECT_URI deve usar HTTPS em produção.")
         if self.storage_backend == "s3":

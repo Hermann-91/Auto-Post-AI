@@ -30,6 +30,7 @@ WORKDIR /app
 
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=appuser:app app ./app
+COPY --chown=appuser:app frontend ./frontend
 COPY --chown=appuser:app alembic ./alembic
 COPY --chown=appuser:app alembic.ini pyproject.toml ./
 
