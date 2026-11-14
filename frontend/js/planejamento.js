@@ -63,17 +63,21 @@ function montarColunaMidiaPost(post, contaId, midiaPorChave) {
   const preview = principal.tipo_arquivo.startsWith("video/")
     ? el("video", { className: "post-thumb-img", src: url, controls: "true" })
     : el("img", { className: "post-thumb-img", src: url, alt: post.tipo_midia, loading: "lazy" });
+  const seloPostado = post.status === "PUBLICADO"
+    ? el("span", { className: "badge badge-ok", text: "✅ Já Postado no IG" })
+    : null;
   const linkAbrir = el("a", { href: url, target: "_blank", rel: "noopener noreferrer", className: "small post-thumb-link", text: `🔍 Ver Arte (${principal.pasta})` });
-  return el("div", { className: "post-thumb-col" }, [preview, linkAbrir]);
+  return el("div", { className: "post-thumb-col" }, [preview, seloPostado, linkAbrir]);
 }
 
 function criarCardPost(post, contaId, midiaPorChave, recarregar) {
   const midias = (post.midias_chaves || []).map((ch) => midiaPorChave.get(ch)).filter(Boolean);
   const promptVisual = midias.map((m) => m.resumo_visual).find(Boolean) || "";
+  const jaPostado = post.status === "PUBLICADO";
   const acoes = [];
-  if (["RASCUNHO", "AGENDADO", "FALHA"].includes(post.status)) {
+  if (["RASCUNHO", "AGENDADO", "FALHA", "PUBLICADO"].includes(post.status)) {
     const inputData = el("input", { type: "datetime-local" });
-    const btnAg = el("button", { type: "button", className: "btn-outline", text: "Agendar" });
+    const btnAg = el("button", { type: "button", className: "btn-outline", text: jaPostado ? "Agendar Repost" : "Agendar" });
     btnAg.addEventListener("click", async () => {
       if (!inputData.value) return notificar("Escolha data e hora.", "erro");
       try {
@@ -82,40 +86,32 @@ function criarCardPost(post, contaId, midiaPorChave, recarregar) {
         await recarregar();
       } catch (err) { notificar(err.message, "erro"); }
     });
-    const btnPub = el("button", { type: "button", className: "btn-primary", text: "Publicar Agora" });
+    const btnPub = el("button", { type: "button", className: "btn-primary", text: jaPostado ? "🔄 Repostar Agora" : "Publicar Agora" });
     btnPub.addEventListener("click", async () => {
       try {
         const r = await apiFetch(`/posts/${contaId}/${post.id}/publicar-agora`, { method: "POST" });
-        notificar(r.publicada ? (r.motivo || "Publicado com sucesso!") : r.motivo, r.publicada ? "ok" : "erro");
+        notificar(r.publicada ? (r.motivo || "Publicado no Instagram!") : r.motivo, r.publicada ? "ok" : "erro");
         await recarregar();
       } catch (err) { notificar(err.message, "erro"); }
     });
-    const btnSb = el("button", { type: "button", className: "btn-warn", text: "⚡ Publicar (Sandbox)" });
-    btnSb.addEventListener("click", async () => {
-      try {
-        const sel = document.getElementById("select-conta");
-        const nome = sel?.selectedOptions?.[0]?.textContent || "@conta_sandbox";
-        await apiJson("/contas", "POST", { conta_id: contaId, username: nome, modo_sandbox: true });
-        const r = await apiFetch(`/posts/${contaId}/${post.id}/publicar-agora`, { method: "POST" });
-        notificar(r.motivo || "Publicado em Modo Sandbox!");
-        await recarregar();
-      } catch (err) { notificar(err.message, "erro"); }
-    });
-    const btnCanc = el("button", { type: "button", className: "btn-danger", text: "Cancelar" });
-    btnCanc.addEventListener("click", async () => {
-      try {
-        await apiFetch(`/posts/${contaId}/${post.id}/cancelar`, { method: "POST" });
-        notificar("Postagem cancelada.");
-        await recarregar();
-      } catch (err) { notificar(err.message, "erro"); }
-    });
-    acoes.push(inputData, btnAg, btnPub, btnSb, btnCanc);
+    acoes.push(inputData, btnAg, btnPub);
+    if (!jaPostado) {
+      const btnCanc = el("button", { type: "button", className: "btn-danger", text: "Cancelar" });
+      btnCanc.addEventListener("click", async () => {
+        try {
+          await apiFetch(`/posts/${contaId}/${post.id}/cancelar`, { method: "POST" });
+          notificar("Postagem cancelada.");
+          await recarregar();
+        } catch (err) { notificar(err.message, "erro"); }
+      });
+      acoes.push(btnCanc);
+    }
   }
 
   const colInfo = el("div", { className: "post-info-col stack-sm" }, [
     el("div", { className: "row-between" }, [
       el("strong", { text: `${post.tipo_midia} • Postagem Gerada` }),
-      el("span", { className: "badge", text: post.status }),
+      el("span", { className: jaPostado ? "badge badge-ok" : "badge", text: jaPostado ? "✅ POSTADO" : post.status }),
     ]),
     el("div", { className: "post-texto-box" }, [
       el("span", { className: "small muted", text: "📝 Legenda & Hashtags:" }),

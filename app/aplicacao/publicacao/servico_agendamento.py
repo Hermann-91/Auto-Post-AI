@@ -86,9 +86,14 @@ class ServicoAgendamentoUseCase:
         return await self._post_repo.salvar(post)
 
     async def agendar_postagem(self, cmd: AgendarPostagemCmd) -> Postagem:
-        """Agenda ou reagenda postagem existente em RASCUNHO ou FALHA."""
+        """Agenda, reagenda ou programa repostagem de post existente."""
         await exigir_conta_ativa(self._conta_repo, cmd.empresa_id, cmd.conta_ig_id, True)
         post = await self.obter_postagem(cmd.empresa_id, cmd.conta_ig_id, cmd.postagem_id)
+        if post.status in {
+            StatusPostagem.PUBLICADO, StatusPostagem.CANCELADO, StatusPostagem.FALHA
+        }:
+            post.status = StatusPostagem.RASCUNHO
+            post.meta_container_id = None
         post.agendar(normalizar_agendamento_utc(cmd.agendado_para))
         return await self._post_repo.salvar(post)
 
@@ -147,7 +152,11 @@ class ServicoAgendamentoUseCase:
         self, empresa_id: UUID, conta_ig_id: UUID, postagem_id: UUID, permitir_imediata: bool
     ) -> ResultadoPublicacaoDTO:
         post = await self.obter_postagem(empresa_id, conta_ig_id, postagem_id)
-        if permitir_imediata and post.status in {StatusPostagem.RASCUNHO, StatusPostagem.FALHA}:
+        if permitir_imediata and post.status in {
+            StatusPostagem.RASCUNHO, StatusPostagem.FALHA, StatusPostagem.PUBLICADO
+        }:
+            post.status = StatusPostagem.RASCUNHO
+            post.meta_container_id = None
             post.agendar(datetime.now(UTC))
         elif post.status != StatusPostagem.AGENDADO:
             return ResultadoPublicacaoDTO(
@@ -162,15 +171,6 @@ class ServicoAgendamentoUseCase:
             conta = await exigir_conta_ativa(self._conta_repo, empresa_id, conta_ig_id, True)
             bruto = self._cripto.descriptografar(conta.access_token_enc).strip().strip("\"'")
             token_plano = bruto[7:].strip() if bruto.lower().startswith("bearer ") else bruto
-            if conta.ig_user_id.startswith("sandbox_") or token_plano.startswith("sandbox_token_"):
-                post.marcar_publicado(
-                    f"sandbox_pub_{post.id.hex[:8]}", f"sandbox_cnt_{post.id.hex[:8]}"
-                )
-                return ResultadoPublicacaoDTO(
-                    postagem=await self._post_repo.salvar(post),
-                    publicada=True,
-                    motivo="Publicado em Modo Teste/Sandbox!",
-                )
             urls = [await self._storage.obter_url_publica(c) for c in post.midias_chaves]
             meta_media_id, meta_container_id = await self._fabrica.obter(
                 post.tipo_midia

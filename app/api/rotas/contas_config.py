@@ -81,11 +81,9 @@ async def salvar_conta_instagram(
     username = payload.username.strip().lstrip("@")
     if not username:
         raise ErroValidacaoDominio("Informe um @username válido.")
-    ig_user_id = payload.ig_user_id.strip() or (
-        f"sandbox_{username.lower()}" if payload.modo_sandbox else ""
-    )
+    ig_user_id = payload.ig_user_id.strip()
     if not ig_user_id:
-        raise ErroValidacaoDominio("Informe o IG User ID da Meta ou use o Modo Teste/Sandbox.")
+        raise ErroValidacaoDominio("Informe o IG User ID da conta no Meta for Developers.")
     conta = (
         await container.conta_repo.buscar_por_id(ctx.empresa_id, payload.conta_id)
         if payload.conta_id
@@ -98,15 +96,14 @@ async def salvar_conta_instagram(
     conta = conta or await container.conta_repo.buscar_por_ig_user_id(ctx.empresa_id, ig_user_id)
     expira_em = datetime.now(UTC) + timedelta(days=payload.validade_dias)
     bruto = payload.access_token.strip().strip("\"'")
-    limpo = bruto[7:].strip() if bruto.lower().startswith("bearer ") else bruto
-    token_plano = limpo or (f"sandbox_token_{username.lower()}" if payload.modo_sandbox else "")
+    token_plano = bruto[7:].strip() if bruto.lower().startswith("bearer ") else bruto
     if conta is not None:
         conta.username, conta.ig_user_id, conta.ativa = username, ig_user_id, True
         if token_plano:
             conta.atualizar_token(meta.cripto.criptografar(token_plano), expira_em)
     else:
         if not token_plano:
-            raise ErroValidacaoDominio("Informe o Access Token da Meta ou use o Modo Sandbox.")
+            raise ErroValidacaoDominio("Informe o Access Token gerado no Meta for Developers.")
         conta = ContaInstagram(
             empresa_id=ctx.empresa_id, ig_user_id=ig_user_id, username=username,
             access_token_enc=meta.cripto.criptografar(token_plano), token_expira_em=expira_em,

@@ -92,26 +92,6 @@ export function inicializarConfigECustos(obterContaAtiva, obterContaObj, recarre
     preencherFormConta(obterContaObj ? obterContaObj() : null);
   });
 
-  const criarSandbox = async () => {
-    const inputUser = document.getElementById("conta-username");
-    const contaAtual = obterContaObj ? obterContaObj() : null;
-    const digitado = (inputUser?.value || "").trim();
-    const username = digitado || (contaAtual ? `@${contaAtual.username}` : "@conta_sandbox");
-    const usarAtual = contaAtual && (!digitado || digitado.replace(/^@/, "") === contaAtual.username);
-    try {
-      const criada = await apiJson("/contas", "POST", {
-        conta_id: usarAtual ? contaAtual.id : null,
-        username,
-        modo_sandbox: true,
-      });
-      notificar(`Conta @${criada.username} ativa em Modo Teste/Sandbox!`);
-      if (recarregarContas) await recarregarContas(criada.id);
-      if (ativarSecao) ativarSecao("sec-biblioteca");
-    } catch (err) { notificar(err.message, "erro"); }
-  };
-  document.getElementById("btn-criar-sandbox")?.addEventListener("click", criarSandbox);
-  document.getElementById("btn-sandbox-vazio")?.addEventListener("click", criarSandbox);
-
   document.getElementById("form-conta-ig")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -122,7 +102,6 @@ export function inicializarConfigECustos(obterContaAtiva, obterContaObj, recarre
         username: String(fd.get("username") || ""),
         ig_user_id: String(fd.get("ig_user_id") || ""),
         access_token: String(fd.get("access_token") || ""),
-        modo_sandbox: false,
       });
       notificar(`Conta @${salva.username} salva com criptografia Fernet!`);
       if (recarregarContas) await recarregarContas(salva.id);

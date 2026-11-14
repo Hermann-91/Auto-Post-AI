@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.config import Configuracoes
 from app.dominio.entidades.publicacao import Postagem
-from app.dominio.objetos_valor.enums_conteudo import TipoMidia
+from app.dominio.objetos_valor.enums_conteudo import StatusPostagem, TipoMidia
 from app.main import criar_app
 
 
@@ -91,7 +91,7 @@ async def test_protecao_csrf_double_submit_e_fetch_metadata() -> None:
         assert ok.status_code == 200
 
 
-async def test_cadastro_manual_e_sandbox_conta_instagram_fernet() -> None:
+async def test_cadastro_manual_conta_instagram_fernet_e_repost() -> None:
     cfg = Configuracoes(
         app_env="test",
         argon2_time_cost=1,
@@ -115,32 +115,6 @@ async def test_cadastro_manual_e_sandbox_conta_instagram_fernet() -> None:
         csrf = cli.cookies.get("csrf_token") or ""
         headers = {"Origin": "https://testserver", "X-CSRF-Token": csrf}
 
-        sandbox = await cli.post(
-            "/contas",
-            headers=headers,
-            json={"username": "@teste_local", "modo_sandbox": True},
-        )
-        assert sandbox.status_code == 201
-        assert sandbox.json()["username"] == "teste_local"
-        assert sandbox.json()["ig_user_id"] == "sandbox_teste_local"
-        sandbox_id = UUID(sandbox.json()["id"])
-
-        post_sb = await app.state.ia_container.post_repo.salvar(
-            Postagem(
-                empresa_id=empresa_id,
-                conta_ig_id=sandbox_id,
-                tipo_midia=TipoMidia.IMAGE,
-                midias_chaves=[f"{empresa_id}/{sandbox_id}/IA-Cria/arte.jpg"],
-                legenda="Teste visual no painel",
-            )
-        )
-        pub_sb = await cli.post(
-            f"/posts/{sandbox_id}/{post_sb.id}/publicar-agora",
-            headers=headers,
-        )
-        assert pub_sb.status_code == 200 and pub_sb.json()["publicada"] is True
-        assert pub_sb.json()["postagem"]["status"] == "PUBLICADO"
-
         manual = await cli.post(
             "/contas",
             headers=headers,
@@ -148,7 +122,6 @@ async def test_cadastro_manual_e_sandbox_conta_instagram_fernet() -> None:
                 "username": "@marca_oficial",
                 "ig_user_id": "17841400999",
                 "access_token": "IGQWR_TOKEN_SECRETO_META",
-                "modo_sandbox": False,
             },
         )
         assert manual.status_code == 201
@@ -168,11 +141,28 @@ async def test_cadastro_manual_e_sandbox_conta_instagram_fernet() -> None:
                 "username": "@marca_renomeada",
                 "ig_user_id": "17841400999",
                 "access_token": "",
-                "modo_sandbox": False,
             },
         )
         assert editada.status_code == 201
         assert editada.json()["username"] == "marca_renomeada"
 
+        post_pub = await app.state.ia_container.post_repo.salvar(
+            Postagem(
+                empresa_id=empresa_id,
+                conta_ig_id=conta_id,
+                tipo_midia=TipoMidia.IMAGE,
+                midias_chaves=[f"{empresa_id}/{conta_id}/IA-Cria/arte.jpg"],
+                legenda="Post já publicado que será repostado",
+                status=StatusPostagem.PUBLICADO,
+                meta_media_id="179000001",
+            )
+        )
+        reagendado = await cli.post(
+            f"/posts/{conta_id}/{post_pub.id}/agendar",
+            headers=headers,
+            json={"agendado_para": "2027-01-15T18:00:00Z"},
+        )
+        assert reagendado.status_code == 200 and reagendado.json()["status"] == "AGENDADO"
+
         lista = await cli.get("/contas")
-        assert lista.status_code == 200 and len(lista.json()) == 2
+        assert lista.status_code == 200 and len(lista.json()) == 1

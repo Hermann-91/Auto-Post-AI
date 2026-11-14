@@ -54,10 +54,9 @@
 
     <section id="sem-conta-aviso" class="glass-card aviso-vazio hidden">
       <h2>Nenhuma conta Instagram conectada</h2>
-      <p class="muted">Para usar em localhost sem HTTPS da Meta, crie uma conta em Modo Teste/Sandbox ou cadastre seu Token manualmente na aba Conta Instagram.</p>
+      <p class="muted">Conecte sua conta Instagram Business/Creator cadastrando suas credenciais da Meta ou iniciando o fluxo OAuth.</p>
       <div class="row-actions">
-        <button id="btn-sandbox-vazio" type="button" class="btn-primary">⚡ Criar Conta Modo Teste/Sandbox</button>
-        <button id="btn-config-conta-vazio" type="button" class="btn-outline">⚙ Cadastrar Token Manual / Guia Meta</button>
+        <button id="btn-config-conta-vazio" type="button" class="btn-primary">⚙ Configurar Conta &amp; Token Meta</button>
         <button id="btn-conectar-meta-vazio" type="button" class="btn-ghost">↗ Abrir OAuth Meta (Nova Aba)</button>
       </div>
     </section>
@@ -167,12 +166,9 @@
             <form id="form-conta-ig" class="stack-sm">
               <label>Modo de Operação <select name="modo_edicao" id="conta-modo-edicao"><option value="nova">Cadastrar Nova Conta</option><option value="ativa">Editar Conta Selecionada no Topo</option></select></label>
               <label>Usuário (@username) <input name="username" id="conta-username" type="text" placeholder="Ex.: @minha_marca" required /></label>
-              <label>IG User ID (Meta Graph) <input name="ig_user_id" id="conta-ig-user-id" type="text" placeholder="Ex.: 17841400000000000 (opcional no Sandbox)" /></label>
-              <label>Access Token (Long-Lived) <input name="access_token" id="conta-access-token" type="password" placeholder="Cole o token da Meta (salvo com criptografia Fernet)" /></label>
-              <div class="row-actions">
-                <button type="submit" class="btn-primary">Salvar Credenciais (Fernet)</button>
-                <button id="btn-criar-sandbox" type="button" class="btn-warn">⚡ Criar Modo Teste/Sandbox</button>
-              </div>
+              <label>IG User ID (Meta Graph) <input name="ig_user_id" id="conta-ig-user-id" type="text" placeholder="Ex.: 17841400000000000" required /></label>
+              <label>Access Token (Long-Lived) <input name="access_token" id="conta-access-token" type="password" placeholder="Cole o token IGAA... ou EAA... da Meta (criptografado via Fernet)" /></label>
+              <button type="submit" class="btn-primary">Salvar Credenciais no Banco (Fernet)</button>
             </form>
           </article>
 
@@ -182,7 +178,7 @@
               <li>Acesse <code>developers.facebook.com/apps</code>, crie um App do tipo <strong>Empresa</strong> e adicione o produto <strong>Instagram</strong>.</li>
               <li>Em <strong>Configurações Básicas</strong>, copie <code>App ID</code> e <code>App Secret</code> para o seu <code>.env</code> (<code>META_APP_ID</code> e <code>META_APP_SECRET</code>).</li>
               <li>Em <strong>Instagram &gt; Configuração da API com login do Instagram</strong>, adicione sua conta profissional como Testadora e clique em <strong>Gerar Token</strong> (permissões <code>instagram_business_basic</code> e <code>instagram_business_content_publish</code>).</li>
-              <li>Copie o <strong>IG User ID</strong> (<code>1784...</code>) ao lado da conta e o <strong>Access Token</strong> gerado e salve no formulário ao lado (ou use o <strong>Modo Teste/Sandbox</strong> em <code>localhost</code>).</li>
+              <li>Copie o <strong>IG User ID</strong> (<code>1784...</code>) ao lado da conta e o <strong>Access Token</strong> gerado e salve no formulário ao lado.</li>
             </ol>
             <button id="btn-conectar-meta-aba" type="button" class="btn-outline">↗ Iniciar Fluxo OAuth Meta em Nova Aba</button>
           </article>
