@@ -27,6 +27,17 @@ class ContaInstagramResumoResponse(BaseModel):
     ativa: bool
 
 
+class SalvarContaInstagramRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conta_id: UUID | None = None
+    username: str = Field(min_length=1, max_length=80)
+    ig_user_id: str = Field(default="", max_length=80)
+    access_token: str = Field(default="", max_length=2048)
+    modo_sandbox: bool = False
+    validade_dias: int = Field(default=60, ge=1, le=365)
+
+
 class AtualizarConfigIARequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

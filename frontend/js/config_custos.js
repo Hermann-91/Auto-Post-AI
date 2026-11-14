@@ -53,15 +53,74 @@ export async function carregarConfigECustos(contaId) {
   }
 }
 
-export function inicializarConfigECustos(obterContaAtiva) {
+export function preencherFormConta(conta) {
+  const modo = document.getElementById("conta-modo-edicao");
+  const userEl = document.getElementById("conta-username");
+  const igIdEl = document.getElementById("conta-ig-user-id");
+  const tokEl = document.getElementById("conta-access-token");
+  if (!modo || !userEl || !igIdEl || !tokEl) return;
+  if (modo.value === "ativa" && conta) {
+    userEl.value = `@${conta.username}`;
+    igIdEl.value = conta.ig_user_id || "";
+    tokEl.value = "";
+  } else if (modo.value === "nova") {
+    userEl.value = "";
+    igIdEl.value = "";
+    tokEl.value = "";
+  }
+}
+
+export function inicializarConfigECustos(obterContaAtiva, obterContaObj, recarregarContas, ativarSecao) {
   const conectar = async () => {
     try {
       const res = await apiFetch("/meta/oauth/url");
-      window.location.assign(res.url_autorizacao);
+      window.open(res.url_autorizacao, "_blank", "noopener,noreferrer");
+      notificar("Fluxo OAuth aberto em nova aba.");
     } catch (err) { notificar(err.message, "erro"); }
   };
   document.getElementById("btn-conectar-meta")?.addEventListener("click", conectar);
   document.getElementById("btn-conectar-meta-vazio")?.addEventListener("click", conectar);
+  document.getElementById("btn-conectar-meta-aba")?.addEventListener("click", conectar);
+
+  const irParaConfigConta = () => {
+    if (ativarSecao) ativarSecao("sec-conta-meta");
+  };
+  document.getElementById("btn-abrir-config-conta")?.addEventListener("click", irParaConfigConta);
+  document.getElementById("btn-config-conta-vazio")?.addEventListener("click", irParaConfigConta);
+
+  document.getElementById("conta-modo-edicao")?.addEventListener("change", () => {
+    preencherFormConta(obterContaObj ? obterContaObj() : null);
+  });
+
+  const criarSandbox = async () => {
+    const inputUser = document.getElementById("conta-username");
+    const username = (inputUser?.value || "").trim() || "@conta_sandbox";
+    try {
+      const criada = await apiJson("/contas", "POST", { username, modo_sandbox: true });
+      notificar(`Conta @${criada.username} ativa em Modo Teste/Sandbox!`);
+      if (recarregarContas) await recarregarContas(criada.id);
+      if (ativarSecao) ativarSecao("sec-biblioteca");
+    } catch (err) { notificar(err.message, "erro"); }
+  };
+  document.getElementById("btn-criar-sandbox")?.addEventListener("click", criarSandbox);
+  document.getElementById("btn-sandbox-vazio")?.addEventListener("click", criarSandbox);
+
+  document.getElementById("form-conta-ig")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const editarAtiva = fd.get("modo_edicao") === "ativa" && obterContaAtiva();
+    try {
+      const salva = await apiJson("/contas", "POST", {
+        conta_id: editarAtiva ? obterContaAtiva() : null,
+        username: String(fd.get("username") || ""),
+        ig_user_id: String(fd.get("ig_user_id") || ""),
+        access_token: String(fd.get("access_token") || ""),
+        modo_sandbox: false,
+      });
+      notificar(`Conta @${salva.username} salva com criptografia Fernet!`);
+      if (recarregarContas) await recarregarContas(salva.id);
+    } catch (err) { notificar(err.message, "erro"); }
+  });
 
   document.getElementById("form-config-ia")?.addEventListener("submit", async (e) => {
     e.preventDefault();

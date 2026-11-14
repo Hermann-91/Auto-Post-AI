@@ -58,3 +58,6 @@ button { cursor: pointer; transition: 0.15s ease; background: transparent; color
 .toast { padding: 0.75rem 1rem; border-radius: 10px; background: var(--surface-strong); border: 1px solid var(--border); box-shadow: var(--shadow); }
 .toast.erro { border-color: var(--danger); }
 .toast.ok { border-color: var(--ok); }
+
+.guia-lista { padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.55rem; line-height: 1.45; margin-bottom: 0.85rem; }
+code { background: var(--surface-strong); padding: 0.1rem 0.35rem; border-radius: 6px; font-size: 0.82rem; }

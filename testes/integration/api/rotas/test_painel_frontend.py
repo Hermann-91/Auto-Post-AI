@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from httpx import ASGITransport, AsyncClient
 
 from app.core.config import Configuracoes
@@ -25,11 +27,13 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
 
         html = await cli.get("/painel/")
         assert html.status_code == 200 and "Robo-Auto-Inst" in html.text
+        assert "sec-conta-meta" in html.text and "Meta for Developers" in html.text
         assert "https://challenges.cloudflare.com" in html.headers["content-security-policy"]
 
         js_app = await cli.get("/painel/js/app.js")
+        js_cfg = await cli.get("/painel/js/config_custos.js")
         css_main = await cli.get("/painel/css/styles.css")
-        assert js_app.status_code == 200 and css_main.status_code == 200
+        assert js_app.status_code == 200 and css_main.status_code == 200 and "_blank" in js_cfg.text
 
         pub = await cli.get("/auth/config")
         assert pub.status_code == 200
@@ -83,3 +87,73 @@ async def test_protecao_csrf_double_submit_e_fetch_metadata() -> None:
             },
         )
         assert ok.status_code == 200
+
+
+async def test_cadastro_manual_e_sandbox_conta_instagram_fernet() -> None:
+    cfg = Configuracoes(
+        app_env="test",
+        argon2_time_cost=1,
+        argon2_memory_cost_kib=8192,
+        argon2_parallelism=1,
+    )
+    app = criar_app(cfg)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="https://testserver") as cli:
+        reg = await cli.post(
+            "/auth/register",
+            json={
+                "nome_empresa": "SaaS IG Co",
+                "email": "admin@saasig.com",
+                "senha": "SenhaSuperSegura#1",
+                "turnstile_token": "ok",
+            },
+        )
+        assert reg.status_code == 201
+        empresa_id = UUID(reg.json()["usuario"]["empresa_id"])
+        csrf = cli.cookies.get("csrf_token") or ""
+        headers = {"Origin": "https://testserver", "X-CSRF-Token": csrf}
+
+        sandbox = await cli.post(
+            "/contas",
+            headers=headers,
+            json={"username": "@teste_local", "modo_sandbox": True},
+        )
+        assert sandbox.status_code == 201
+        assert sandbox.json()["username"] == "teste_local"
+        assert sandbox.json()["ig_user_id"] == "sandbox_teste_local"
+
+        manual = await cli.post(
+            "/contas",
+            headers=headers,
+            json={
+                "username": "@marca_oficial",
+                "ig_user_id": "17841400999",
+                "access_token": "IGQWR_TOKEN_SECRETO_META",
+                "modo_sandbox": False,
+            },
+        )
+        assert manual.status_code == 201
+        conta_id = UUID(manual.json()["id"])
+
+        conta_db = await app.state.ia_container.conta_repo.buscar_por_id(empresa_id, conta_id)
+        assert conta_db is not None
+        assert conta_db.access_token_enc != "IGQWR_TOKEN_SECRETO_META"
+        token_dec = app.state.meta_container.cripto.descriptografar(conta_db.access_token_enc)
+        assert token_dec == "IGQWR_TOKEN_SECRETO_META"
+
+        editada = await cli.post(
+            "/contas",
+            headers=headers,
+            json={
+                "conta_id": str(conta_id),
+                "username": "@marca_renomeada",
+                "ig_user_id": "17841400999",
+                "access_token": "",
+                "modo_sandbox": False,
+            },
+        )
+        assert editada.status_code == 201
+        assert editada.json()["username"] == "marca_renomeada"
+
+        lista = await cli.get("/contas")
+        assert lista.status_code == 200 and len(lista.json()) == 2

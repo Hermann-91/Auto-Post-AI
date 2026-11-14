@@ -1,14 +1,21 @@
 import { apiFetch } from "/painel/js/api.js";
 import { configurarTema, inicializarAuth } from "/painel/js/auth.js";
 import { carregarBiblioteca, inicializarBiblioteca } from "/painel/js/biblioteca.js";
-import { carregarConfigECustos, inicializarConfigECustos } from "/painel/js/config_custos.js";
+import { carregarConfigECustos, inicializarConfigECustos, preencherFormConta } from "/painel/js/config_custos.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
 import { carregarPlanejamentoEPosts, inicializarPlanejamento } from "/painel/js/planejamento.js";
 
-const estado = { contaAtivaId: "" };
+const estado = { contaAtivaId: "", contas: [] };
 const obterContaAtiva = () => estado.contaAtivaId;
+const obterContaAtivaObj = () => estado.contas.find((c) => c.id === estado.contaAtivaId) || null;
+
+export function ativarSecao(alvo) {
+  document.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("active", b.getAttribute("data-sec") === alvo));
+  document.querySelectorAll(".painel-sec").forEach((s) => s.classList.toggle("hidden", s.id !== alvo));
+}
 
 async function carregarDadosContaAtiva() {
+  preencherFormConta(obterContaAtivaObj());
   if (!estado.contaAtivaId) return;
   try {
     await Promise.all([
@@ -21,28 +28,32 @@ async function carregarDadosContaAtiva() {
   }
 }
 
-async function carregarContas() {
+async function carregarContas(contaPreferidaId = "") {
   const contas = await apiFetch("/contas");
+  estado.contas = contas;
   const select = document.getElementById("select-conta");
   const aviso = document.getElementById("sem-conta-aviso");
   const main = document.getElementById("conteudo-principal");
   if (!select) return;
   limpar(select);
+  main?.classList.remove("hidden");
 
   if (!contas.length) {
     estado.contaAtivaId = "";
+    select.appendChild(el("option", { value: "", text: "Sem conta" }));
     aviso?.classList.remove("hidden");
-    main?.classList.add("hidden");
+    ativarSecao("sec-conta-meta");
+    preencherFormConta(null);
     return;
   }
   aviso?.classList.add("hidden");
-  main?.classList.remove("hidden");
   for (const c of contas) {
     select.appendChild(el("option", { value: c.id, text: `@${c.username}` }));
   }
-  const salva = localStorage.getItem("conta_ativa_id");
+  const salva = contaPreferidaId || localStorage.getItem("conta_ativa_id");
   estado.contaAtivaId = contas.some((c) => c.id === salva) ? salva : contas[0].id;
   select.value = estado.contaAtivaId;
+  localStorage.setItem("conta_ativa_id", estado.contaAtivaId);
   await carregarDadosContaAtiva();
 }
 
@@ -63,11 +74,7 @@ function mostrarLogin() {
 function configurarNavegacao() {
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const alvo = btn.getAttribute("data-sec");
-      document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      document.querySelectorAll(".painel-sec").forEach((s) => s.classList.add("hidden"));
-      document.getElementById(alvo)?.classList.remove("hidden");
+      ativarSecao(btn.getAttribute("data-sec"));
     });
   });
 
@@ -83,7 +90,12 @@ configurarNavegacao();
 inicializarAuth(mostrarApp, mostrarLogin);
 inicializarBiblioteca(obterContaAtiva);
 inicializarPlanejamento(obterContaAtiva);
-inicializarConfigECustos(obterContaAtiva);
+inicializarConfigECustos(
+  obterContaAtiva,
+  obterContaAtivaObj,
+  (novoId) => carregarContas(novoId),
+  ativarSecao
+);
 
 apiFetch("/auth/me")
   .then((usuario) => mostrarApp(usuario))

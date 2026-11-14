@@ -14,17 +14,12 @@
     <section class="glass-card auth-card">
       <div class="auth-header">
         <div>
-          <span class="badge">SaaS Instagram</span>
-          <h1>Robo-Auto-Inst</h1>
-          <p class="muted">Criação com IA, biblioteca inteligente e publicação oficial Meta.</p>
+          <span class="badge">SaaS Instagram</span><h1>Robo-Auto-Inst</h1><p class="muted">Criação com IA, biblioteca inteligente e publicação oficial Meta.</p>
         </div>
         <button id="btn-tema-auth" type="button" class="btn-ghost" title="Alternar tema">◐</button>
       </div>
 
-      <div class="tabs-inline" role="tablist">
-        <button id="tab-login" type="button" class="tab-btn active">Entrar</button>
-        <button id="tab-registro" type="button" class="tab-btn">Criar Conta</button>
-      </div>
+      <div class="tabs-inline" role="tablist"><button id="tab-login" type="button" class="tab-btn active">Entrar</button><button id="tab-registro" type="button" class="tab-btn">Criar Conta</button></div>
 
       <form id="form-login" class="stack">
         <label>E-mail <input name="email" type="email" required autocomplete="email" /></label>
@@ -36,9 +31,7 @@
       <form id="form-registro" class="stack hidden">
         <label>Nome da Empresa <input name="nome_empresa" type="text" required minlength="2" /></label>
         <label>E-mail Corporativo <input name="email" type="email" required autocomplete="email" /></label>
-        <label>Senha (mín. 8 caracteres)
-          <input name="senha" type="password" required minlength="8" autocomplete="new-password" />
-        </label>
+        <label>Senha (mín. 8 caracteres) <input name="senha" type="password" required minlength="8" autocomplete="new-password" /></label>
         <div id="turnstile-registro" class="turnstile-box"></div>
         <button type="submit" class="btn-primary">Criar Empresa &amp; Entrar</button>
       </form>
@@ -47,31 +40,26 @@
 
   <div id="app-view" class="app-shell hidden">
     <header class="glass-bar topbar">
-      <div class="brand">
-        <strong>Robo-Auto-Inst</strong>
-        <span id="usuario-email" class="muted small"></span>
-      </div>
+      <div class="brand"><strong>Robo-Auto-Inst</strong> <span id="usuario-email" class="muted small"></span></div>
       <div class="topbar-actions">
-        <label class="conta-picker">
-          <span class="small muted">Conta IG:</span>
-          <select id="select-conta"></select>
-        </label>
-        <button id="btn-conectar-meta" type="button" class="btn-outline">+ Conectar Instagram</button>
+        <label class="conta-picker"><span class="small muted">Conta IG:</span><select id="select-conta"></select></label>
+        <button id="btn-abrir-config-conta" type="button" class="btn-outline">⚙ Configurar Conta IG</button>
+        <button id="btn-conectar-meta" type="button" class="btn-outline">↗ OAuth Meta</button>
         <button id="btn-tema-app" type="button" class="btn-ghost" title="Alternar tema">◐</button>
         <button id="btn-logout" type="button" class="btn-ghost">Sair</button>
       </div>
     </header>
 
-    <nav class="nav-tabs" aria-label="Seções do painel">
-      <button type="button" class="nav-btn active" data-sec="sec-biblioteca">Biblioteca &amp; Cota</button>
-      <button type="button" class="nav-btn" data-sec="sec-planejamento">Planejamento &amp; Posts</button>
-      <button type="button" class="nav-btn" data-sec="sec-config">Persona, RAG &amp; Custos ($)</button>
-    </nav>
+    <nav class="nav-tabs" aria-label="Seções do painel"><button type="button" class="nav-btn active" data-sec="sec-biblioteca">Biblioteca &amp; Cota</button><button type="button" class="nav-btn" data-sec="sec-planejamento">Planejamento &amp; Posts</button><button type="button" class="nav-btn" data-sec="sec-config">Persona, RAG &amp; Custos ($)</button><button type="button" class="nav-btn" data-sec="sec-conta-meta">Conta Instagram &amp; Guia Meta</button></nav>
 
     <section id="sem-conta-aviso" class="glass-card aviso-vazio hidden">
       <h2>Nenhuma conta Instagram conectada</h2>
-      <p class="muted">Conecte sua primeira conta Instagram Business/Creator via OAuth oficial da Meta para liberar biblioteca, planejamento semanal e agendamento.</p>
-      <button id="btn-conectar-meta-vazio" type="button" class="btn-primary">Conectar Instagram Agora</button>
+      <p class="muted">Para usar em localhost sem HTTPS da Meta, crie uma conta em Modo Teste/Sandbox ou cadastre seu Token manualmente na aba Conta Instagram.</p>
+      <div class="row-actions">
+        <button id="btn-sandbox-vazio" type="button" class="btn-primary">⚡ Criar Conta Modo Teste/Sandbox</button>
+        <button id="btn-config-conta-vazio" type="button" class="btn-outline">⚙ Cadastrar Token Manual / Guia Meta</button>
+        <button id="btn-conectar-meta-vazio" type="button" class="btn-ghost">↗ Abrir OAuth Meta (Nova Aba)</button>
+      </div>
     </section>
 
     <main id="conteudo-principal" class="container">
@@ -91,12 +79,7 @@
             <h3>Upload Direto (Compactação Automática)</h3>
             <form id="form-upload" class="stack-sm">
               <div class="row-actions">
-                <select name="pasta" id="upload-pasta">
-                  <option value="originais">originais/</option>
-                  <option value="processadas">processadas/</option>
-                  <option value="IA-Cria">IA-Cria/</option>
-                  <option value="IA-Edita">IA-Edita/</option>
-                </select>
+                <select name="pasta" id="upload-pasta"><option value="originais">originais/</option><option value="processadas">processadas/</option><option value="IA-Cria">IA-Cria/</option><option value="IA-Edita">IA-Edita/</option></select>
                 <input type="file" name="arquivo" id="upload-arquivo" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" required />
               </div>
               <button type="submit" class="btn-primary">Enviar para Biblioteca</button>
@@ -107,11 +90,7 @@
         <div class="glass-card">
           <div class="row-between">
             <div id="filtro-pastas" class="tabs-inline">
-              <button type="button" class="tab-btn active" data-pasta="">Todas</button>
-              <button type="button" class="tab-btn" data-pasta="originais">originais</button>
-              <button type="button" class="tab-btn" data-pasta="processadas">processadas</button>
-              <button type="button" class="tab-btn" data-pasta="IA-Cria">IA-Cria</button>
-              <button type="button" class="tab-btn" data-pasta="IA-Edita">IA-Edita</button>
+              <button type="button" class="tab-btn active" data-pasta="">Todas</button><button type="button" class="tab-btn" data-pasta="originais">originais</button><button type="button" class="tab-btn" data-pasta="processadas">processadas</button><button type="button" class="tab-btn" data-pasta="IA-Cria">IA-Cria</button><button type="button" class="tab-btn" data-pasta="IA-Edita">IA-Edita</button>
             </div>
             <button id="btn-recarregar-bib" type="button" class="btn-ghost">Atualizar</button>
           </div>
@@ -124,14 +103,8 @@
           <article class="glass-card">
             <h3>Planejamento Semanal Automatizado (2 Etapas)</h3>
             <form id="form-propor-plano" class="stack-sm">
-              <div class="row-actions">
-                <label>Início da Semana <input name="semana_inicio" type="date" required /></label>
-                <label>Qtd. Posts <input name="quantidade_posts" type="number" min="1" max="14" value="5" /></label>
-              </div>
-              <div class="row-actions">
-                <label>Nicho <input name="nicho" type="text" placeholder="Ex.: clínica estética" /></label>
-                <label>Região <input name="regiao" type="text" placeholder="Brasil" /></label>
-              </div>
+              <div class="row-actions"><label>Início da Semana <input name="semana_inicio" type="date" required /></label><label>Qtd. Posts <input name="quantidade_posts" type="number" min="1" max="14" value="5" /></label></div>
+              <div class="row-actions"><label>Nicho <input name="nicho" type="text" placeholder="Ex.: clínica estética" /></label><label>Região <input name="regiao" type="text" placeholder="Brasil" /></label></div>
               <label>Objetivo <input name="objetivo_semana" type="text" value="crescimento orgânico e autoridade" /></label>
               <label class="check"><input name="incluir_imagens_ia" type="checkbox" checked /> Gerar artes com Nano Banana</label>
               <button type="submit" class="btn-primary">Etapa 1: Propor Grade &amp; Estimar ($)</button>
@@ -142,12 +115,7 @@
             <h3>Criação Rápida com IA</h3>
             <form id="form-criar-ia" class="stack-sm">
               <div class="row-actions">
-                <select name="tipo_midia">
-                  <option value="IMAGE">IMAGE</option>
-                  <option value="CAROUSEL">CAROUSEL</option>
-                  <option value="REELS">REELS</option>
-                  <option value="STORIES">STORIES</option>
-                </select>
+                <select name="tipo_midia"><option value="IMAGE">IMAGE</option><option value="CAROUSEL">CAROUSEL</option><option value="REELS">REELS</option><option value="STORIES">STORIES</option></select>
                 <input name="tema" type="text" placeholder="Tema do post" required />
               </div>
               <label class="check"><input name="gerar_imagem_ia" type="checkbox" /> Gerar imagem via Nano Banana</label>
@@ -156,15 +124,8 @@
           </article>
         </div>
 
-        <article class="glass-card">
-          <div class="row-between"><h3>Planos Semanais</h3><button id="btn-recarregar-planos" type="button" class="btn-ghost">Atualizar</button></div>
-          <div id="lista-planos" class="stack-sm"></div>
-        </article>
-
-        <article class="glass-card">
-          <div class="row-between"><h3>Postagens &amp; Agendamento</h3><button id="btn-recarregar-posts" type="button" class="btn-ghost">Atualizar</button></div>
-          <div id="lista-posts" class="stack-sm"></div>
-        </article>
+        <article class="glass-card"><div class="row-between"><h3>Planos Semanais</h3><button id="btn-recarregar-planos" type="button" class="btn-ghost">Atualizar</button></div><div id="lista-planos" class="stack-sm"></div></article>
+        <article class="glass-card"><div class="row-between"><h3>Postagens &amp; Agendamento</h3><button id="btn-recarregar-posts" type="button" class="btn-ghost">Atualizar</button></div><div id="lista-posts" class="stack-sm"></div></article>
       </section>
 
       <section id="sec-config" class="painel-sec hidden">
@@ -181,10 +142,7 @@
               <label>Marca <input name="marca" type="text" /></label>
               <label>Nicho <input name="nicho" type="text" /></label>
               <label>Tom de Voz <input name="tom_voz" type="text" /></label>
-              <div class="row-actions">
-                <label>Modelo Texto <input name="modelo_texto_pref" type="text" required /></label>
-                <label>Modelo Imagem <input name="modelo_img_pref" type="text" required /></label>
-              </div>
+              <div class="row-actions"><label>Modelo Texto <input name="modelo_texto_pref" type="text" required /></label><label>Modelo Imagem <input name="modelo_img_pref" type="text" required /></label></div>
               <button type="submit" class="btn-primary">Salvar Persona &amp; Modelos</button>
             </form>
           </article>
@@ -193,17 +151,42 @@
         <article class="glass-card">
           <h3>Base de Conhecimento RAG da Conta</h3>
           <form id="form-rag" class="row-actions">
-            <select name="tipo">
-              <option value="TEXTO">TEXTO</option>
-              <option value="FAQ">FAQ</option>
-              <option value="DOCUMENTO">DOCUMENTO</option>
-            </select>
+            <select name="tipo"><option value="TEXTO">TEXTO</option><option value="FAQ">FAQ</option><option value="DOCUMENTO">DOCUMENTO</option></select>
             <input name="titulo" type="text" placeholder="Título da fonte" required />
             <input name="conteudo" type="text" placeholder="Conteúdo de referência da marca..." required />
             <button type="submit" class="btn-primary">Indexar</button>
           </form>
           <div id="lista-rag" class="stack-sm"></div>
         </article>
+      </section>
+
+      <section id="sec-conta-meta" class="painel-sec hidden">
+        <div class="grid-2">
+          <article class="glass-card">
+            <h3>Cadastrar / Editar Conta Instagram (Fernet)</h3>
+            <form id="form-conta-ig" class="stack-sm">
+              <label>Modo de Operação <select name="modo_edicao" id="conta-modo-edicao"><option value="nova">Cadastrar Nova Conta</option><option value="ativa">Editar Conta Selecionada no Topo</option></select></label>
+              <label>Usuário (@username) <input name="username" id="conta-username" type="text" placeholder="Ex.: @minha_marca" required /></label>
+              <label>IG User ID (Meta Graph) <input name="ig_user_id" id="conta-ig-user-id" type="text" placeholder="Ex.: 17841400000000000 (opcional no Sandbox)" /></label>
+              <label>Access Token (Long-Lived) <input name="access_token" id="conta-access-token" type="password" placeholder="Cole o token da Meta (salvo com criptografia Fernet)" /></label>
+              <div class="row-actions">
+                <button type="submit" class="btn-primary">Salvar Credenciais (Fernet)</button>
+                <button id="btn-criar-sandbox" type="button" class="btn-warn">⚡ Criar Modo Teste/Sandbox</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="glass-card">
+            <h3>Guia Passo a Passo: Meta for Developers</h3>
+            <ol class="guia-lista small">
+              <li>Acesse <code>developers.facebook.com/apps</code>, crie um App do tipo <strong>Empresa</strong> e adicione o produto <strong>Instagram</strong>.</li>
+              <li>Em <strong>Configurações Básicas</strong>, copie <code>App ID</code> e <code>App Secret</code> para o seu <code>.env</code> (<code>META_APP_ID</code> e <code>META_APP_SECRET</code>).</li>
+              <li>Em <strong>Instagram &gt; Configuração da API com login do Instagram</strong>, adicione sua conta profissional como Testadora e clique em <strong>Gerar Token</strong> (permissões <code>instagram_business_basic</code> e <code>instagram_business_content_publish</code>).</li>
+              <li>Copie o <strong>IG User ID</strong> (<code>1784...</code>) ao lado da conta e o <strong>Access Token</strong> gerado e salve no formulário ao lado (ou use o <strong>Modo Teste/Sandbox</strong> em <code>localhost</code>).</li>
+            </ol>
+            <button id="btn-conectar-meta-aba" type="button" class="btn-outline">↗ Iniciar Fluxo OAuth Meta em Nova Aba</button>
+          </article>
+        </div>
       </section>
     </main>
   </div>
