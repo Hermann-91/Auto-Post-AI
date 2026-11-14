@@ -24,7 +24,7 @@ class Configuracoes(BaseSettings):
     )
 
     app_nome: str = "Robo-Auto-Inst API"
-    app_env: Literal["dev", "test", "prod"] = "dev"
+    app_env: Literal["dev", "local", "test", "prod"] = "dev"
     cors_origens: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
     # Segredos (obrigatórios via ambiente em produção; efêmeros apenas em dev/test)
