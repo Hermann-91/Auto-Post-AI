@@ -97,9 +97,9 @@ async def salvar_conta_instagram(
         )
     conta = conta or await container.conta_repo.buscar_por_ig_user_id(ctx.empresa_id, ig_user_id)
     expira_em = datetime.now(UTC) + timedelta(days=payload.validade_dias)
-    token_plano = payload.access_token.strip() or (
-        f"sandbox_token_{username.lower()}" if payload.modo_sandbox and not conta else ""
-    )
+    bruto = payload.access_token.strip().strip("\"'")
+    limpo = bruto[7:].strip() if bruto.lower().startswith("bearer ") else bruto
+    token_plano = limpo or (f"sandbox_token_{username.lower()}" if payload.modo_sandbox else "")
     if conta is not None:
         conta.username, conta.ig_user_id, conta.ativa = username, ig_user_id, True
         if token_plano:

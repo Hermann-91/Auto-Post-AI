@@ -61,3 +61,13 @@ button { cursor: pointer; transition: 0.15s ease; background: transparent; color
 
 .guia-lista { padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.55rem; line-height: 1.45; margin-bottom: 0.85rem; }
 code { background: var(--surface-strong); padding: 0.1rem 0.35rem; border-radius: 6px; font-size: 0.82rem; }
+
+.post-card-visual { display: grid; grid-template-columns: 170px 1fr; gap: 1.1rem; align-items: start; }
+@media (max-width: 640px) { .post-card-visual { grid-template-columns: 1fr; } }
+.post-thumb-col { display: flex; flex-direction: column; gap: 0.45rem; align-items: center; }
+.post-thumb-img { width: 170px; height: 212px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); background: #0004; }
+.post-thumb-placeholder { width: 170px; height: 212px; display: grid; place-items: center; border-radius: 10px; border: 1px dashed var(--border); }
+.post-thumb-link { color: var(--primary); text-decoration: none; font-weight: 600; }
+.post-thumb-link:hover { text-decoration: underline; }
+.post-texto-box, .post-prompt-box { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 10px; padding: 0.65rem 0.8rem; }
+.post-legenda-txt { white-space: pre-wrap; margin: 0.3rem 0 0; font-size: 0.92rem; line-height: 1.45; }

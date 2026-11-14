@@ -160,14 +160,25 @@ class ServicoAgendamentoUseCase:
         await self._post_repo.salvar(post)
         try:
             conta = await exigir_conta_ativa(self._conta_repo, empresa_id, conta_ig_id, True)
-            token_plano = self._cripto.descriptografar(conta.access_token_enc)
+            bruto = self._cripto.descriptografar(conta.access_token_enc).strip().strip("\"'")
+            token_plano = bruto[7:].strip() if bruto.lower().startswith("bearer ") else bruto
+            if conta.ig_user_id.startswith("sandbox_") or token_plano.startswith("sandbox_token_"):
+                post.marcar_publicado(
+                    f"sandbox_pub_{post.id.hex[:8]}", f"sandbox_cnt_{post.id.hex[:8]}"
+                )
+                return ResultadoPublicacaoDTO(
+                    postagem=await self._post_repo.salvar(post),
+                    publicada=True,
+                    motivo="Publicado em Modo Teste/Sandbox!",
+                )
             urls = [await self._storage.obter_url_publica(c) for c in post.midias_chaves]
             meta_media_id, meta_container_id = await self._fabrica.obter(
                 post.tipo_midia
             ).publicar(conta, token_plano, post, urls)
             post.marcar_publicado(meta_media_id=meta_media_id, meta_container_id=meta_container_id)
-            salva = await self._post_repo.salvar(post)
-            return ResultadoPublicacaoDTO(postagem=salva, publicada=True)
+            return ResultadoPublicacaoDTO(
+                postagem=await self._post_repo.salvar(post), publicada=True
+            )
         except ErroLimitePublicacaoMeta as exc:
             post.marcar_falha(str(exc))
             post.agendar(datetime.now(UTC) + timedelta(minutes=self._reagendar_minutos))

@@ -7,6 +7,8 @@ from uuid import UUID
 from httpx import ASGITransport, AsyncClient
 
 from app.core.config import Configuracoes
+from app.dominio.entidades.publicacao import Postagem
+from app.dominio.objetos_valor.enums_conteudo import TipoMidia
 from app.main import criar_app
 
 
@@ -121,6 +123,23 @@ async def test_cadastro_manual_e_sandbox_conta_instagram_fernet() -> None:
         assert sandbox.status_code == 201
         assert sandbox.json()["username"] == "teste_local"
         assert sandbox.json()["ig_user_id"] == "sandbox_teste_local"
+        sandbox_id = UUID(sandbox.json()["id"])
+
+        post_sb = await app.state.ia_container.post_repo.salvar(
+            Postagem(
+                empresa_id=empresa_id,
+                conta_ig_id=sandbox_id,
+                tipo_midia=TipoMidia.IMAGE,
+                midias_chaves=[f"{empresa_id}/{sandbox_id}/IA-Cria/arte.jpg"],
+                legenda="Teste visual no painel",
+            )
+        )
+        pub_sb = await cli.post(
+            f"/posts/{sandbox_id}/{post_sb.id}/publicar-agora",
+            headers=headers,
+        )
+        assert pub_sb.status_code == 200 and pub_sb.json()["publicada"] is True
+        assert pub_sb.json()["postagem"]["status"] == "PUBLICADO"
 
         manual = await cli.post(
             "/contas",

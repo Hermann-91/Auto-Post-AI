@@ -94,9 +94,16 @@ export function inicializarConfigECustos(obterContaAtiva, obterContaObj, recarre
 
   const criarSandbox = async () => {
     const inputUser = document.getElementById("conta-username");
-    const username = (inputUser?.value || "").trim() || "@conta_sandbox";
+    const contaAtual = obterContaObj ? obterContaObj() : null;
+    const digitado = (inputUser?.value || "").trim();
+    const username = digitado || (contaAtual ? `@${contaAtual.username}` : "@conta_sandbox");
+    const usarAtual = contaAtual && (!digitado || digitado.replace(/^@/, "") === contaAtual.username);
     try {
-      const criada = await apiJson("/contas", "POST", { username, modo_sandbox: true });
+      const criada = await apiJson("/contas", "POST", {
+        conta_id: usarAtual ? contaAtual.id : null,
+        username,
+        modo_sandbox: true,
+      });
       notificar(`Conta @${criada.username} ativa em Modo Teste/Sandbox!`);
       if (recarregarContas) await recarregarContas(criada.id);
       if (ativarSecao) ativarSecao("sec-biblioteca");

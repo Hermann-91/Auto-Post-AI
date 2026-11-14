@@ -1,4 +1,5 @@
 import { apiFetch, apiJson } from "/painel/js/api.js";
+import { carregarBiblioteca } from "/painel/js/biblioteca.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
 
 function criarCardPlano(plano, contaId, recarregar) {
@@ -21,13 +22,14 @@ function criarCardPlano(plano, contaId, recarregar) {
         const res = await apiFetch(`/planejamento/${contaId}/${plano.id}/executar`, { method: "POST" });
         notificar(`Executado! ${res.postagens_criadas.length} post(s) criado(s) ($${res.custo_real_usd}).`);
         await recarregar();
+        await carregarBiblioteca(contaId);
       } catch (err) { notificar(err.message, "erro"); }
     });
     acoes.push(btnExec);
   }
 
   const itensEl = (plano.itens_grade || []).map((it) =>
-    el("li", { className: "small muted", text: `${it.dia_semana || ""} [${it.formato || "IMAGE"}] ${it.tema || ""}` })
+    el("li", { className: "small muted", text: `${it.dia_semana || ""} [${it.formato || "IMAGE"}] ${it.tema || ""} — 🎨 ${it.ideia_visual || ""}` })
   );
   return el("div", { className: "item-card stack-sm" }, [
     el("div", { className: "row-between" }, [
@@ -39,7 +41,28 @@ function criarCardPlano(plano, contaId, recarregar) {
   ]);
 }
 
-function criarCardPost(post, contaId, recarregar) {
+function montarColunaMidiaPost(post, contaId, midiaPorChave) {
+  const midias = (post.midias_chaves || []).map((ch) => midiaPorChave.get(ch)).filter(Boolean);
+  if (!midias.length) {
+    return el("div", { className: "post-thumb-col" }, [
+      el("div", { className: "post-thumb-placeholder small muted", text: "Sem mídia" }),
+    ]);
+  }
+  const principal = midias[0];
+  const url = `/biblioteca/${contaId}/midias/${principal.id}/conteudo`;
+  const preview = principal.tipo_arquivo.startsWith("video/")
+    ? el("video", { className: "post-thumb-img", src: url, controls: "true" })
+    : el("img", { className: "post-thumb-img", src: url, alt: post.tipo_midia, loading: "lazy" });
+  const linkAbrir = el("a", {
+    href: url, target: "_blank", rel: "noopener noreferrer",
+    className: "small post-thumb-link", text: `🔍 Ver Arte (${principal.pasta})`,
+  });
+  return el("div", { className: "post-thumb-col" }, [preview, linkAbrir]);
+}
+
+function criarCardPost(post, contaId, midiaPorChave, recarregar) {
+  const midias = (post.midias_chaves || []).map((ch) => midiaPorChave.get(ch)).filter(Boolean);
+  const promptVisual = midias.map((m) => m.resumo_visual).find(Boolean) || "";
   const acoes = [];
   if (["RASCUNHO", "AGENDADO", "FALHA"].includes(post.status)) {
     const inputData = el("input", { type: "datetime-local" });
@@ -58,7 +81,7 @@ function criarCardPost(post, contaId, recarregar) {
     btnPub.addEventListener("click", async () => {
       try {
         const r = await apiFetch(`/posts/${contaId}/${post.id}/publicar-agora`, { method: "POST" });
-        notificar(r.publicada ? "Publicado na Meta!" : r.motivo);
+        notificar(r.publicada ? (r.motivo || "Publicado com sucesso!") : r.motivo, r.publicada ? "ok" : "erro");
         await recarregar();
       } catch (err) { notificar(err.message, "erro"); }
     });
@@ -72,22 +95,39 @@ function criarCardPost(post, contaId, recarregar) {
     });
     acoes.push(inputData, btnAg, btnPub, btnCanc);
   }
-  return el("div", { className: "item-card stack-sm" }, [
+
+  const colInfo = el("div", { className: "post-info-col stack-sm" }, [
     el("div", { className: "row-between" }, [
-      el("strong", { text: `${post.tipo_midia} • ${(post.legenda || "(sem legenda)").slice(0, 80)}` }),
+      el("strong", { text: `${post.tipo_midia} • Postagem Gerada` }),
       el("span", { className: "badge", text: post.status }),
     ]),
+    el("div", { className: "post-texto-box" }, [
+      el("span", { className: "small muted", text: "📝 Legenda & Hashtags:" }),
+      el("p", { className: "post-legenda-txt", text: post.legenda || "(Stories sem legenda)" }),
+    ]),
+    promptVisual ? el("div", { className: "post-prompt-box" }, [
+      el("span", { className: "small muted", text: "🎨 Prompt Gerado para a Imagem:" }),
+      el("p", { className: "small", text: promptVisual }),
+    ]) : null,
+    post.meta_media_id ? el("p", { className: "small", text: `✓ ID Publicação: ${post.meta_media_id}` }) : null,
     post.erro_detalhe ? el("p", { className: "small muted", text: `Detalhe: ${post.erro_detalhe}` }) : null,
     el("div", { className: "row-actions" }, acoes),
+  ]);
+
+  return el("div", { className: "item-card post-card-visual" }, [
+    montarColunaMidiaPost(post, contaId, midiaPorChave),
+    colInfo,
   ]);
 }
 
 export async function carregarPlanejamentoEPosts(contaId) {
   if (!contaId) return;
-  const [planos, posts] = await Promise.all([
+  const [planos, posts, midias] = await Promise.all([
     apiFetch(`/planejamento/${contaId}`),
     apiFetch(`/posts/${contaId}`),
+    apiFetch(`/biblioteca/${contaId}`),
   ]);
+  const midiaPorChave = new Map((midias || []).map((m) => [m.chave_storage, m]));
   const boxPlanos = document.getElementById("lista-planos");
   const boxPosts = document.getElementById("lista-posts");
   if (boxPlanos) {
@@ -98,7 +138,7 @@ export async function carregarPlanejamentoEPosts(contaId) {
   if (boxPosts) {
     limpar(boxPosts);
     if (!posts.length) boxPosts.appendChild(el("p", { className: "muted", text: "Nenhuma postagem encontrada." }));
-    for (const post of posts) boxPosts.appendChild(criarCardPost(post, contaId, () => carregarPlanejamentoEPosts(contaId)));
+    for (const post of posts) boxPosts.appendChild(criarCardPost(post, contaId, midiaPorChave, () => carregarPlanejamentoEPosts(contaId)));
   }
 }
 
@@ -141,6 +181,7 @@ export function inicializarPlanejamento(obterContaAtiva) {
       notificar(`Rascunho criado ($${res.custo_total_usd} USD).`);
       e.target.reset();
       await carregarPlanejamentoEPosts(contaId);
+      await carregarBiblioteca(contaId);
     } catch (err) { notificar(err.message, "erro"); }
   });
 }
