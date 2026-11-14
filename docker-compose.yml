@@ -1,11 +1,23 @@
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-prod}
+  DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://robo_app:devpass@db:5432/robo_auto_inst}
+  REDIS_URL: ${REDIS_URL:-redis://:devredispass@redis:6379/0}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+  FERNET_KEYS: ${FERNET_KEYS:-}
+  COOKIE_SECURE: ${COOKIE_SECURE:-true}
+  CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-false}
+  STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+  STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-/app/data/storage}
+  STORAGE_LOCAL_BASE_URL: ${STORAGE_LOCAL_BASE_URL:-https://localhost/media}
+
 services:
   proxy:
     image: caddy:2.8-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
     environment:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
     volumes:
@@ -24,10 +36,7 @@ services:
     env_file:
       - path: .env
         required: false
-    environment:
-      APP_ENV: ${APP_ENV:-prod}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://robo_app:devpass@db:5432/robo_auto_inst}
-      REDIS_URL: ${REDIS_URL:-redis://:devredispass@redis:6379/0}
+    environment: *app-env
     command:
       - sh
       - -c
@@ -60,18 +69,23 @@ services:
     env_file:
       - path: .env
         required: false
-    environment:
-      APP_ENV: ${APP_ENV:-prod}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://robo_app:devpass@db:5432/robo_auto_inst}
-      REDIS_URL: ${REDIS_URL:-redis://:devredispass@redis:6379/0}
+    environment: *app-env
     command: ["python", "-m", "app.worker"]
     volumes:
       - local_storage:/app/data/storage
     depends_on:
+      api:
+        condition: service_healthy
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   db:
     image: postgres:16-alpine

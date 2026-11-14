@@ -28,5 +28,5 @@ warn_unused_configs = true
 mypy_path = "."
 
 [[tool.mypy.overrides]]
-module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+module = ["boto3", "botocore.*"]
 ignore_missing_imports = true

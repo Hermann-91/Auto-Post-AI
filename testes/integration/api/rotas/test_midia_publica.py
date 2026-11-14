@@ -28,6 +28,8 @@ async def test_media_publica_valida_assinatura_hmac(tmp_path: Path) -> None:
         assert ok.status_code == 200
         assert ok.content == b"\xff\xd8\xffok"
         assert ok.headers["x-content-type-options"] == "nosniff"
+        assert ok.headers["content-disposition"] == "inline"
+        assert "max-age=31536000" in ok.headers["strict-transport-security"]
 
         sem_sig = await cli.get(parsed.path)
         assert sem_sig.status_code == 403

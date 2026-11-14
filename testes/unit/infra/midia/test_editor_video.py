@@ -46,10 +46,13 @@ def test_processar_video_sem_logo_monta_comando_9_16_com_audio() -> None:
 def test_processar_video_com_logo_usa_filter_complex_4_5() -> None:
     cmd_capturado: list[str] = []
 
-    def fake_executor(cmd: list[str], _timeout: float) -> subprocess.CompletedProcess[str]:
-        cmd_capturado.extend(cmd)
-        Path(cmd[-1]).write_bytes(b"mp4-com-logo")
-        return subprocess.CompletedProcess(cmd, 0, "", "")
+    def fake_executor(
+        comando: list[str], timeout_segundos: float
+    ) -> subprocess.CompletedProcess[str]:
+        _ = timeout_segundos
+        cmd_capturado.extend(comando)
+        Path(comando[-1]).write_bytes(b"mp4-com-logo")
+        return subprocess.CompletedProcess(comando, 0, "", "")
 
     editor = EditorVideo(executor=fake_executor)
     saida = editor.processar_video(
@@ -66,20 +69,28 @@ def test_processar_video_com_logo_usa_filter_complex_4_5() -> None:
 
 
 def test_processar_video_trata_falhas_e_validacoes() -> None:
-    def executor_ausente(cmd: list[str], _t: float) -> subprocess.CompletedProcess[str]:
+    def executor_ausente(
+        comando: list[str], timeout_segundos: float
+    ) -> subprocess.CompletedProcess[str]:
+        _ = (comando, timeout_segundos)
         raise FileNotFoundError("ffmpeg not found")
 
     with pytest.raises(ErroProcessamentoMidia, match="não encontrado"):
         EditorVideo(executor=executor_ausente).processar_video(b"video")
 
-    def executor_timeout(cmd: list[str], t: float) -> subprocess.CompletedProcess[str]:
-        raise subprocess.TimeoutExpired(cmd, t)
+    def executor_timeout(
+        comando: list[str], timeout_segundos: float
+    ) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(comando, timeout_segundos)
 
     with pytest.raises(ErroProcessamentoMidia, match="excedeu o limite"):
         EditorVideo(executor=executor_timeout).processar_video(b"video")
 
-    def executor_erro(cmd: list[str], _t: float) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(cmd, 1, "", "erro codec")
+    def executor_erro(
+        comando: list[str], timeout_segundos: float
+    ) -> subprocess.CompletedProcess[str]:
+        _ = timeout_segundos
+        return subprocess.CompletedProcess(comando, 1, "", "erro codec")
 
     with pytest.raises(ErroProcessamentoMidia, match="erro codec"):
         EditorVideo(executor=executor_erro).processar_video(b"video")

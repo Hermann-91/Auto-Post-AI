@@ -51,5 +51,8 @@ async def servir_midia_local_assinada(
     return FileResponse(
         path=destino,
         media_type=media_type,
-        headers={"Cache-Control": "public, max-age=3600"},
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "Content-Disposition": "inline",
+        },
     )

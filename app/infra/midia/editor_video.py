@@ -27,6 +27,7 @@ class ExecutorComandoPort(Protocol):
         self,
         cmd: list[str],
         timeout_segundos: float,
+        /,
     ) -> subprocess.CompletedProcess[str]: ...
 
 

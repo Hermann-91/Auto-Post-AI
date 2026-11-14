@@ -18,18 +18,11 @@ class _FakeRedis:
         self.dados: dict[str, str] = {}
         self.falhar = falhar
 
-    async def set(
-        self,
-        name: str,
-        value: str,
-        px: int | None = None,
-        nx: bool = False,
-        ex: int | None = None,
-    ) -> bool:
-        _ = (px, ex)
+    async def set(self, name: str, value: str, *args: Any, **kwargs: Any) -> bool:
+        _ = args
         if self.falhar:
             raise RedisError("Redis offline")
-        if nx and name in self.dados:
+        if kwargs.get("nx") and name in self.dados:
             return False
         self.dados[name] = value
         return True

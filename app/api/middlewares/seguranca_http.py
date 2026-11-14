@@ -37,13 +37,12 @@ async def aplicar_headers_seguranca(
     call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
     """Aplica proteção CSRF global em mutações e cabeçalhos HTTP defensivos."""
-    if request.method in _METODOS_MUTAVEIS:
-        container = getattr(request.app.state, "auth_container", None)
-        if container is not None:
-            try:
-                validar_origem_csrf(request, container.config)
-            except HTTPException as exc:
-                return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    container = getattr(request.app.state, "auth_container", None)
+    if request.method in _METODOS_MUTAVEIS and container is not None:
+        try:
+            validar_origem_csrf(request, container.config)
+        except HTTPException as exc:
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -51,6 +50,8 @@ async def aplicar_headers_seguranca(
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = _CSP_POLITICA
+    if container is not None and container.config.cookie_secure:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     if request.url.path.startswith("/auth"):
         response.headers["Cache-Control"] = "no-store"
     return response

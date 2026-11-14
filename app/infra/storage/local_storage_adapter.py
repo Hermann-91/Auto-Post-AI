@@ -1,4 +1,4 @@
-"""Adaptador de storage em disco local exclusivo para dev/testes."""
+"""Adaptador de storage em disco local da VPS com URLs assinadas via HMAC-SHA256."""
 
 from __future__ import annotations
 
@@ -31,11 +31,16 @@ class LocalStorageAdapter:
         return self._signing_secret is not None
 
     def _resolver_caminho(self, chave: str) -> tuple[str, Path]:
-        chave_limpa = chave.strip().lstrip("/")
-        if not chave_limpa or ".." in chave_limpa.split("/"):
+        if "\x00" in chave or "\\" in chave:
+            raise ErroValidacaoDominio("Chave de mídia contém caracteres proibidos.")
+        partes = [p for p in chave.strip().lstrip("/").split("/") if p]
+        if not partes or any(p in {".", ".."} for p in partes):
             raise ErroValidacaoDominio("Chave de mídia inválida para storage local.")
-        destino = (self._base_dir / chave_limpa).resolve()
-        if not destino.is_relative_to(self._base_dir):
+        chave_limpa = "/".join(partes)
+        candidato = self._base_dir / chave_limpa
+        destino = candidato.resolve()
+        fora_base = not destino.is_relative_to(self._base_dir) or destino == self._base_dir
+        if candidato.is_symlink() or fora_base:
             raise ErroValidacaoDominio("Caminho fora do diretório permitido de storage.")
         return chave_limpa, destino
 

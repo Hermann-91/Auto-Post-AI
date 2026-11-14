@@ -29,8 +29,22 @@ async def test_local_storage_envia_le_e_remove_com_isolamento(tmp_path: Path) ->
 
 async def test_local_storage_bloqueia_path_traversal(tmp_path: Path) -> None:
     adapter = LocalStorageAdapter(base_dir=tmp_path)
+    chaves_maliciosas = (
+        "../../etc/passwd",
+        "..\\..\\etc\\passwd",
+        "emp1/ig1/\x00foto.jpg",
+        ".",
+    )
+    for chave_maliciosa in chaves_maliciosas:
+        with pytest.raises(ErroValidacaoDominio):
+            await adapter.enviar_bytes(chave_maliciosa, b"x", "text/plain")
+
+    externo = tmp_path.parent / "segredo_host.txt"
+    externo.write_bytes(b"segredo")
+    link = tmp_path / "symlink_escape.jpg"
+    link.symlink_to(externo)
     with pytest.raises(ErroValidacaoDominio):
-        await adapter.enviar_bytes("../../etc/passwd", b"x", "text/plain")
+        await adapter.baixar_bytes("symlink_escape.jpg")
 
 
 async def test_local_storage_assina_e_valida_hmac(tmp_path: Path) -> None:

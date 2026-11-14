@@ -155,8 +155,8 @@ class Configuracoes(BaseSettings):
 
     def resolver_jwt_secret(self) -> str:
         """Retorna a chave JWT configurada ou uma chave efêmera apenas em dev/test."""
-        if self.jwt_secret_key is not None:
-            return self.jwt_secret_key.get_secret_value()
+        if self.jwt_secret_key is not None and self.jwt_secret_key.get_secret_value().strip():
+            return self.jwt_secret_key.get_secret_value().strip()
         if self._jwt_efemero is None:
             logger.warning("Usando JWT_SECRET_KEY efêmera (permitido apenas em dev/test).")
             self._jwt_efemero = secrets.token_urlsafe(48)
@@ -166,7 +166,9 @@ class Configuracoes(BaseSettings):
         """Retorna lista de chaves Fernet (suporte a rotação via MultiFernet)."""
         if self.fernet_keys is not None:
             bruto = self.fernet_keys.get_secret_value()
-            return [chave.strip() for chave in bruto.split(",") if chave.strip()]
+            chaves = [chave.strip() for chave in bruto.split(",") if chave.strip()]
+            if chaves:
+                return chaves
         if self._fernet_efemero is None:
             logger.warning("Usando FERNET_KEYS efêmera (permitido apenas em dev/test).")
             self._fernet_efemero = Fernet.generate_key().decode("utf-8")

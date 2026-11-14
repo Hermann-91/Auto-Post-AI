@@ -70,6 +70,24 @@ def gravar_cookies_sessao(
 
 def limpar_cookies_sessao(response: Response, cfg: Configuracoes) -> None:
     """Remove os cookies de sessão e CSRF do navegador."""
-    response.delete_cookie(key=cfg.cookie_access_nome, path="/")
-    response.delete_cookie(key=cfg.cookie_refresh_nome, path="/auth")
-    response.delete_cookie(key=cfg.cookie_csrf_nome, path="/")
+    response.delete_cookie(
+        key=cfg.cookie_access_nome,
+        path="/",
+        httponly=True,
+        secure=cfg.cookie_secure,
+        samesite=cfg.cookie_samesite,
+    )
+    response.delete_cookie(
+        key=cfg.cookie_refresh_nome,
+        path="/auth",
+        httponly=True,
+        secure=cfg.cookie_secure,
+        samesite=cfg.cookie_samesite,
+    )
+    response.delete_cookie(
+        key=cfg.cookie_csrf_nome,
+        path="/",
+        httponly=False,
+        secure=cfg.cookie_secure,
+        samesite=cfg.cookie_samesite,
+    )

@@ -28,7 +28,8 @@ def _logo_bytes() -> bytes:
 
 
 def _editor_video_fake() -> EditorVideo:
-    def executor(cmd: list[str], _timeout: float) -> subprocess.CompletedProcess[str]:
+    def executor(cmd: list[str], timeout_segundos: float) -> subprocess.CompletedProcess[str]:
+        _ = timeout_segundos
         Path(cmd[-1]).write_bytes(b"\x00\x00\x00\x18ftypmp42-saida")
         return subprocess.CompletedProcess(cmd, 0, "", "")
 

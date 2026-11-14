@@ -37,10 +37,7 @@ def _anexar_legenda(payload: dict[str, Any], legenda: str) -> dict[str, Any]:
 
 
 async def _finalizar_publicacao(
-    cliente: ClienteMetaHttp,
-    conta: ContaInstagram,
-    token: str,
-    container_id: str,
+    cliente: ClienteMetaHttp, conta: ContaInstagram, token: str, container_id: str
 ) -> tuple[str, str]:
     estado = await cliente.aguardar_container_pronto(container_id, token)
     if estado.status_code == "PUBLISHED":
@@ -91,12 +88,9 @@ class _BasePublicacaoSimples:
             raise ErroValidacaoDominio(
                 f"Estratégia {postagem.tipo_midia.value} exige exatamente 1 URL pública."
             )
+        payload = self._montar_payload(urls[0], postagem)
         return await _publicar_simples(
-            self._cliente,
-            conta,
-            token_descriptografado,
-            postagem,
-            self._montar_payload(urls[0], postagem),
+            self._cliente, conta, token_descriptografado, postagem, payload
         )
 
 

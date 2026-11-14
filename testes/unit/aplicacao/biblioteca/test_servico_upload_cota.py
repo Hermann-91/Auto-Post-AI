@@ -62,6 +62,9 @@ class _FakeStorage:
         self.objetos[chave] = conteudo
         return f"https://cdn.exemplo.com/{chave}"
 
+    async def baixar_bytes(self, chave: str) -> bytes:
+        return self.objetos.get(chave, b"")
+
     async def obter_url_publica(self, chave: str) -> str:
         return f"https://cdn.exemplo.com/{chave}"
 

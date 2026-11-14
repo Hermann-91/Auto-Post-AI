@@ -73,6 +73,9 @@ class _FakeStorageLimpeza:
     async def enviar_bytes(self, chave: str, conteudo: bytes, content_type: str) -> str:
         return chave
 
+    async def baixar_bytes(self, chave: str) -> bytes:
+        return b""
+
     async def obter_url_publica(self, chave: str) -> str:
         return chave
 
