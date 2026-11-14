@@ -14,6 +14,12 @@ from app.infra.seguranca.turnstile_adapter import StubCaptchaAdapter
 from app.main import criar_app
 
 
+@pytest.fixture(autouse=True)
+def _isolar_env_file_nos_testes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Impede que o arquivo .env local do desenvolvedor interfira nos testes."""
+    monkeypatch.setitem(Configuracoes.model_config, "env_file", None)
+
+
 @pytest.fixture
 def config_teste() -> Configuracoes:
     """Configuração determinística isolada para testes (Argon2 reduzido e sem Redis)."""
