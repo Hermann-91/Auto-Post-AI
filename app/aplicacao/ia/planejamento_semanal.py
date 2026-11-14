@@ -21,6 +21,7 @@ from app.aplicacao.ia.servico_orcamento import (
 from app.aplicacao.ia.servico_prompts_rag import ServicoPromptsRagUseCase
 from app.dominio.entidades.publicacao import PlanejamentoSemanal, Postagem
 from app.dominio.excecoes import ErroDominio, ErroOrcamentoExcedido, ErroValidacaoDominio
+from app.dominio.objetos_valor.enums_conteudo import StatusPlanejamento
 from app.dominio.portas.ia_meta import ClienteIAPort, PesquisaTendenciasPort
 from app.dominio.portas.repositorios_conteudo import (
     ConfigIARepositoryPort,
@@ -130,6 +131,11 @@ class PlanejamentoSemanalUseCase:
     ) -> ResultadoExecucaoPlanoDTO:
         """Etapa 2b: executa os itens aprovados gerando mídias IA e rascunhos."""
         plano = await self.obter_plano(empresa_id, conta_ig_id, plano_id)
+        if plano.status in {StatusPlanejamento.CONCLUIDO, StatusPlanejamento.FALHA}:
+            plano.status = StatusPlanejamento.APROVADO
+            for it in plano.itens_grade:
+                if isinstance(it, dict):
+                    it["usar_ia_imagem"] = True
         plano.iniciar_execucao()
         await self._plano_repo.salvar(plano)
 

@@ -30,11 +30,7 @@ def normalizar_itens_grade(
         if not isinstance(item, dict):
             continue
         formato = normalizar_formato_midia(item.get("formato"))
-        usar_img = (
-            incluir_imagens_ia
-            and bool(item.get("usar_ia_imagem", formato in (TipoMidia.IMAGE, TipoMidia.STORIES)))
-            and formato in (TipoMidia.IMAGE, TipoMidia.STORIES)
-        )
+        usar_img = incluir_imagens_ia and bool(item.get("usar_ia_imagem", True))
         normalizados.append(
             {
                 "ordem": idx,
@@ -86,20 +82,24 @@ def montar_cmd_item_grade(
     item: dict[str, Any],
 ) -> CriarConteudoCmd:
     """Converte um item da grade semanal em comando de criação individual."""
-    formato = normalizar_formato_midia(item.get("formato"))
-    gerar_img = bool(item.get("usar_ia_imagem", False)) and formato in (
-        TipoMidia.IMAGE,
-        TipoMidia.STORIES,
+    formato_orig = normalizar_formato_midia(item.get("formato"))
+    gerar_img = bool(item.get("usar_ia_imagem", False))
+    formato_efetivo = (
+        TipoMidia.STORIES
+        if formato_orig == TipoMidia.STORIES
+        else (TipoMidia.IMAGE if gerar_img else formato_orig)
     )
+    dia = str(item.get("dia_semana") or "").strip()
+    tema_base = str(item.get("tema") or "Conteúdo semanal").strip()
     return CriarConteudoCmd(
         empresa_id=empresa_id,
         conta_ig_id=conta_ig_id,
-        tipo_midia=formato,
-        tema=str(item.get("tema") or "Conteúdo semanal"),
+        tipo_midia=formato_efetivo,
+        tema=f"[{dia} • {formato_orig.value}] {tema_base}" if dia else tema_base,
         objetivo=str(item.get("objetivo") or "engajamento"),
         gerar_imagem_ia=gerar_img,
         prompt_visual_extra=str(item.get("ideia_visual") or ""),
-        proporcao="9:16" if formato == TipoMidia.STORIES else "4:5",
+        proporcao="9:16" if formato_efetivo == TipoMidia.STORIES else "4:5",
         salvar_rascunho=gerar_img,
         planejamento_id=plano_id,
     )

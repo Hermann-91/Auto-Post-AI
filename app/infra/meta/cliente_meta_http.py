@@ -35,6 +35,7 @@ class ClienteMetaHttp:
         sleep_fn: SleepFn = asyncio.sleep,
     ) -> None:
         self._base = f"{graph_base_url.rstrip('/')}/{graph_version.strip('/')}"
+        self._version = graph_version.strip("/")
         self._timeout = timeout_segundos
         self._intervalos = polling_intervalos or [3.0, 5.0, 10.0, 15.0, 15.0]
         self._http_client = http_client
@@ -51,8 +52,14 @@ class ClienteMetaHttp:
     ) -> dict[str, Any]:
         if not token.strip():
             raise ErroValidacaoDominio("Access token da conta Instagram está vazio.")
-        url = f"{self._base}/{caminho.lstrip('/')}"
-        headers = {"Authorization": f"Bearer {token.strip()}"}
+        tok = token.strip()
+        base_efetiva = (
+            f"https://graph.facebook.com/{self._version}"
+            if tok.startswith("EAA") and "graph.instagram.com" in self._base
+            else self._base
+        )
+        url = f"{base_efetiva}/{caminho.lstrip('/')}"
+        headers = {"Authorization": f"Bearer {tok}"}
         try:
             if self._http_client is not None:
                 resp = await self._http_client.request(
