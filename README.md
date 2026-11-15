@@ -37,11 +37,12 @@ Robo-Auto-Inst/
 │   ├── worker/               # Processo assíncrono de publicação agendada e renovação preventiva de tokens Meta
 │   └── main.py               # Entrypoint e fábrica da aplicação FastAPI
 ├── doc/plan/                 # Documentação arquitetural e plano de fases
+├── doc/                      # Guias de Deploy VPS (branch web) e Integração Meta Graph API
 ├── frontend/                 # Painel Web SPA desacoplado (HTML5, CSS Glassmorphic e JS ES Modules)
-├── testes/                   # Suíte espelhada de testes unitários e de integração (128 testes)
+├── testes/                   # Suíte espelhada de testes unitários e de integração (129 testes)
 ├── Caddyfile                 # Proxy reverso HTTPS automático (Caddy 2)
 ├── Dockerfile                # Build multi-stage com Python 3.12-slim, FFmpeg e usuário não-root (appuser)
-├── docker-compose.yml        # Orquestração VPS: proxy, api, worker, db (Postgres 16) e redis (Redis 7)
+├── docker-compose.yml        # Orquestração: proxy, api, worker, db (Postgres 16), redis e tunnel (cloudflared)
 ├── pyproject.toml            # Configuração de pytest, ruff e mypy --strict
 └── requirements.txt          # Dependências pinadas do projeto
 ```
@@ -63,7 +64,8 @@ Robo-Auto-Inst/
    - `APP_ENV=dev` e `COOKIE_SECURE=false` (permite cookies sobre `http://localhost:8000`).
    - `CAPTCHA_ENABLED=false` (usa stub de Turnstile localmente).
    - `DATABASE_URL=sqlite+aiosqlite:///./robo_auto_inst_dev.db` (ou PostgreSQL).
-   - `STORAGE_BACKEND=local`, `STORAGE_LOCAL_DIR=./data/storage` e `STORAGE_LOCAL_BASE_URL=http://localhost:8000/media`.
+   - `STORAGE_BACKEND=local`, `STORAGE_LOCAL_DIR=./data/storage` e `STORAGE_LOCAL_BASE_URL=https://<seu-tunel>.trycloudflare.com/media` (URL HTTPS pública exigida pela Meta para baixar mídias).
+   - `META_GRAPH_BASE_URL=https://graph.facebook.com` (para tokens `EAA...` do Login Unificado / `SYSTEM_USER`) ou `https://graph.instagram.com` (para tokens `IGAA...`).
    - `OPENROUTER_API_KEY=sk-or-v1-...` (sua chave da OpenRouter para geração de legendas, curadoria visual e imagens).
 
 ---
@@ -93,12 +95,17 @@ python -m app.worker
 
 ## 🐳 Como Executar com Docker Compose (VPS / Produção)
 
-Para subir toda a infraestrutura (`db` PostgreSQL 16, `redis` Redis 7, `api` FastAPI, `worker` e `proxy` Caddy):
+Para subir toda a infraestrutura (6 containers: `db` PostgreSQL 16, `redis` Redis 7, `api` FastAPI, `worker`, `proxy` Caddy e `tunnel` Cloudflare HTTPS):
 
 ```bash
 docker compose up -d --build --wait
 docker compose ps
 ```
+
+> **Captura da URL HTTPS do Túnel (`cloudflared`):**
+> ```bash
+> docker compose logs tunnel | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com'
+> ```
 
 > **Dica para teste local com Docker:** Caso as portas `80` e `443` da sua máquina já estejam ocupadas por outro serviço, parametrize `HTTP_PORT` e `HTTPS_PORT`:
 > ```bash
@@ -109,6 +116,20 @@ Para encerrar os containers:
 ```bash
 docker compose down
 ```
+
+---
+
+## 🌿 Fluxo de Branches e Deploy Automático (`oracle-vps`)
+
+| Branch | Finalidade |
+| :--- | :--- |
+| **`develop`** | Branch padrão de desenvolvimento local para novas features e experimentos. |
+| **`main`** | Branch estável consolidada no GitHub. |
+| **`web`** | Branch de produção vinculada ao deploy automático em tempo real na **`oracle-vps`**. |
+
+Ao executar `git push origin web`, o Git envia os commits simultaneamente para o **GitHub** e para o repositório bare na **`oracle-vps`** (`oracle-vps:/home/ubuntu/repos/robo-auto-inst.git`), disparando o hook `post-receive` que reconstrói e reinicia os containers Docker em `/home/ubuntu/apps/robo-auto-inst`.
+
+- Consulte [doc/deploy_vps_e_branches.md](doc/deploy_vps_e_branches.md) e [doc/guia_meta_graph_api.md](doc/guia_meta_graph_api.md) para detalhes operacionais.
 
 ---
 
@@ -137,7 +158,7 @@ docker compose down
 
 ## 🧪 Qualidade de Código e Testes
 
-O projeto conta com **128 testes automatizados** (unitários e de integração), linter **Ruff** e checagem estrita de tipos com **Mypy (`--strict`)**:
+O projeto conta com **129 testes automatizados** (unitários e de integração), linter **Ruff** e checagem estrita de tipos com **Mypy (`--strict`)**:
 
 ```bash
 # Executar linter
