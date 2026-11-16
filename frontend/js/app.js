@@ -14,6 +14,35 @@ export function ativarSecao(alvo) {
   document.querySelectorAll(".painel-sec").forEach((s) => s.classList.toggle("hidden", s.id !== alvo));
 }
 
+function renderizarAbasContas() {
+  const barra = document.getElementById("abas-contas-dinamicas");
+  if (!barra) return;
+  limpar(barra);
+  if (!estado.contas.length) return barra.classList.add("hidden");
+  barra.classList.remove("hidden");
+  for (const c of estado.contas) {
+    const btn = el("button", {
+      type: "button",
+      className: `conta-tab-btn ${c.id === estado.contaAtivaId ? "active" : ""}`,
+      text: `@${c.username}`,
+    });
+    btn.addEventListener("click", () => selecionarContaAtiva(c.id));
+    barra.appendChild(btn);
+  }
+  const btnAdd = el("button", { type: "button", className: "btn-ghost small", text: "+ Conta" });
+  btnAdd.addEventListener("click", () => ativarSecao("sec-conta-meta"));
+  barra.appendChild(btnAdd);
+}
+
+function selecionarContaAtiva(contaId) {
+  estado.contaAtivaId = contaId;
+  localStorage.setItem("conta_ativa_id", contaId);
+  const select = document.getElementById("select-conta");
+  if (select) select.value = contaId;
+  renderizarAbasContas();
+  return carregarDadosContaAtiva();
+}
+
 async function carregarDadosContaAtiva() {
   preencherFormConta(obterContaAtivaObj());
   if (!estado.contaAtivaId) return;
@@ -42,6 +71,7 @@ async function carregarContas(contaPreferidaId = "") {
     estado.contaAtivaId = "";
     select.appendChild(el("option", { value: "", text: "Sem conta" }));
     aviso?.classList.remove("hidden");
+    renderizarAbasContas();
     ativarSecao("sec-conta-meta");
     preencherFormConta(null);
     return;
@@ -54,6 +84,7 @@ async function carregarContas(contaPreferidaId = "") {
   estado.contaAtivaId = contas.some((c) => c.id === salva) ? salva : contas[0].id;
   select.value = estado.contaAtivaId;
   localStorage.setItem("conta_ativa_id", estado.contaAtivaId);
+  renderizarAbasContas();
   await carregarDadosContaAtiva();
 }
 
@@ -78,11 +109,7 @@ function configurarNavegacao() {
     });
   });
 
-  document.getElementById("select-conta")?.addEventListener("change", (e) => {
-    estado.contaAtivaId = e.target.value;
-    localStorage.setItem("conta_ativa_id", estado.contaAtivaId);
-    carregarDadosContaAtiva();
-  });
+  document.getElementById("select-conta")?.addEventListener("change", (e) => selecionarContaAtiva(e.target.value));
 }
 
 configurarTema();

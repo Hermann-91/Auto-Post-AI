@@ -1,0 +1,73 @@
+.topbar-fixa { padding: 0.65rem 1.25rem; position: sticky; top: 0; z-index: 30; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.brand-conta, .nav-head-links, .topbar-controles { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+
+.conta-tabs-bar { max-width: 1320px; margin: 0.85rem auto 0.2rem; padding: 0 1rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.conta-tab-btn { padding: 0.4rem 0.85rem; border-radius: 999px; font-size: 0.86rem; font-weight: 600; background: var(--surface); border: 1px solid var(--border); }
+.conta-tab-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border-color: transparent; }
+
+.container-largo { max-width: 1320px; margin: 0.8rem auto 2rem; padding: 0 1rem; }
+.grid-2-agenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1rem; }
+
+textarea {
+  font: inherit;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.75rem;
+  background: var(--surface-strong);
+  color: var(--text);
+  width: 100%;
+  resize: vertical;
+}
+
+.seletor-midia-box { border: 1px dashed var(--border); border-radius: 12px; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); display: flex; flex-direction: column; gap: 0.55rem; }
+.seletor-modos, .seletor-presets { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+.seletor-bib-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 0.45rem; max-height: 175px; overflow-y: auto; }
+.seletor-thumb-btn { padding: 0; border-radius: 8px; overflow: hidden; border: 2px solid var(--border); height: 74px; background: #0003; }
+.seletor-thumb-btn.selecionada { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35); }
+.seletor-thumb-btn img, .seletor-thumb-btn video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.presets-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.28rem 0.6rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-strong); font-size: 0.8rem; cursor: pointer; flex: 0 0 auto; }
+
+.resumo-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding-bottom: 0.45rem; border-bottom: 1px solid var(--border); }
+.resumo-item-card { background: var(--surface-strong); border: 1px solid var(--border); border-radius: 12px; padding: 0.7rem; display: flex; flex-direction: column; gap: 0.45rem; }
+.resumo-item-topo { display: grid; grid-template-columns: 1fr 115px 100px; gap: 0.45rem; align-items: center; }
+.previa-unitaria-box { display: grid; grid-template-columns: 145px 1fr; gap: 0.85rem; align-items: start; }
+.previa-unitaria-img { width: 145px; height: 180px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+
+.grid-agenda-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.9rem; }
+@media (max-width: 1120px) { .grid-agenda-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .grid-agenda-4, .resumo-item-topo, .previa-unitaria-box { grid-template-columns: 1fr; } }
+
+.agenda-card { background: var(--surface-strong); border: 1px solid var(--border); border-radius: 14px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.55rem; }
+.agenda-box-midia { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #0003; aspect-ratio: 4 / 5; }
+.agenda-midia-conteudo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.agenda-btn-foto-ext { position: absolute; top: 0.45rem; left: 0.45rem; padding: 0.25rem 0.55rem; font-size: 0.74rem; background: rgba(15, 23, 42, 0.8); color: #fff; border: 1px solid rgba(255, 255, 255, 0.24); backdrop-filter: blur(6px); }
+
+.btn-circular-recriar {
+  position: absolute;
+  right: 0.45rem;
+  bottom: 0.45rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.agenda-box-texto { position: relative; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.65rem 2.2rem; min-height: 118px; display: flex; flex-direction: column; gap: 0.35rem; }
+.agenda-legenda-clamp { margin: 0; font-size: 0.83rem; line-height: 1.38; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.agenda-prompt-mini { margin: 0; font-size: 0.74rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.agenda-acoes-barra { display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.35rem; align-items: center; margin-top: auto; }
+.agenda-input-data { min-width: 0; font-size: 0.74rem; padding: 0.38rem 0.4rem; }
+.btn-icone { padding: 0.4rem 0.55rem; font-size: 0.82rem; white-space: nowrap; }
+
+.modal-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(2, 6, 23, 0.74); backdrop-filter: blur(8px); display: grid; place-items: center; padding: 1rem; }
+.modal-card { width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; border-radius: 18px; padding: 1.2rem; background: var(--surface-strong); border: 1px solid var(--border); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 0.8rem; }
+.modal-preview-img { width: 100%; max-height: 230px; object-fit: contain; border-radius: 10px; background: #0004; border: 1px solid var(--border); }
+.rag-cultura-box { background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 10px; padding: 0.65rem 0.8rem; max-height: 135px; overflow-y: auto; }

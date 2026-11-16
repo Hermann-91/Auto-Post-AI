@@ -1,164 +1,88 @@
 import { apiFetch, apiJson } from "/painel/js/api.js";
 import { carregarBiblioteca } from "/painel/js/biblioteca.js";
+import { criarCardAgenda } from "/painel/js/componentes/card_agenda.js";
+import { renderizarPreviaUnitaria, renderizarResumoSemanal } from "/painel/js/componentes/resumo_orcamento.js";
+import { criarSeletorMidiaIA } from "/painel/js/componentes/seletor_midia_ia.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
 
-function criarCardPlano(plano, contaId, postsPlano, midiaPorChave, recarregar) {
-  const acoes = [];
-  if (plano.status === "AGUARDANDO_APROVACAO") {
-    const btnAprovar = el("button", { type: "button", className: "btn-primary", text: "Etapa 2a: Aprovar Orçamento" });
-    btnAprovar.addEventListener("click", async () => {
-      try {
-        await apiFetch(`/planejamento/${contaId}/${plano.id}/aprovar`, { method: "POST" });
-        notificar("Plano aprovado.");
-        await recarregar();
-      } catch (err) { notificar(err.message, "erro"); }
-    });
-    acoes.push(btnAprovar);
-  }
-  if (["APROVADO", "CONCLUIDO", "FALHA"].includes(plano.status)) {
-    const txtBtn = plano.status === "APROVADO" ? "Etapa 2b: Executar & Gerar Fotos" : "🔄 Gerar Fotos & Rascunhos da Semana";
-    const btnExec = el("button", { type: "button", className: "btn-primary", text: txtBtn });
-    btnExec.addEventListener("click", async () => {
-      try {
-        const res = await apiFetch(`/planejamento/${contaId}/${plano.id}/executar`, { method: "POST" });
-        notificar(`Executado! ${res.postagens_criadas.length} post(s) criado(s) ($${res.custo_real_usd}).`);
-        await recarregar();
-        await carregarBiblioteca(contaId);
-      } catch (err) { notificar(err.message, "erro"); }
-    });
-    acoes.push(btnExec);
-  }
+let seletorSemanal = null, seletorUnitario = null, planoSelecionadoId = "", previaUnitaria = null, ultimaContaId = "";
 
-  const thumbsPlano = postsPlano.map((pt) => {
-    const m = (pt.midias_chaves || []).map((c) => midiaPorChave.get(c)).find(Boolean);
-    if (!m) return null;
-    const url = `/biblioteca/${contaId}/midias/${m.id}/conteudo`;
-    return el("a", { href: url, target: "_blank", className: "plano-mini-card" }, [
-      el("img", { src: url, className: "plano-mini-img", alt: "Arte" }),
-      el("span", { className: "small", text: `${(pt.legenda || "").slice(0, 42)}...` }),
-    ]);
-  }).filter(Boolean);
-
-  const itensEl = (plano.itens_grade || []).map((it) =>
-    el("li", { className: "small muted", text: `${it.dia_semana || ""} [${it.formato || "IMAGE"}] ${it.tema || ""} — 🎨 ${it.ideia_visual || ""}` })
-  );
-  return el("div", { className: "item-card stack-sm" }, [
-    el("div", { className: "row-between" }, [
-      el("strong", { text: `Semana ${plano.semana_inicio} • Est. $${plano.custo_estimado_usd} USD` }),
-      el("span", { className: "badge", text: plano.status }),
-    ]),
-    el("ul", {}, itensEl),
-    thumbsPlano.length ? el("div", { className: "plano-thumbs-grid" }, thumbsPlano) : null,
-    el("div", { className: "row-actions" }, acoes),
-  ]);
+function atualizarPrevia(contaId) {
+  renderizarPreviaUnitaria({
+    container: document.getElementById("previa-unitaria-box"),
+    previa: previaUnitaria,
+    contaId,
+    aoLimpar: () => { previaUnitaria = null; atualizarPrevia(contaId); },
+    aoConcluir: async () => { previaUnitaria = null; seletorUnitario?.limparSelecao(); await carregarPlanejamentoEPosts(contaId); },
+  });
 }
 
-function montarColunaMidiaPost(post, contaId, midiaPorChave) {
-  const midias = (post.midias_chaves || []).map((ch) => midiaPorChave.get(ch)).filter(Boolean);
-  if (!midias.length) {
-    return el("div", { className: "post-thumb-col" }, [el("div", { className: "post-thumb-placeholder small muted", text: "Sem mídia" })]);
-  }
-  const principal = midias[0];
-  const url = `/biblioteca/${contaId}/midias/${principal.id}/conteudo`;
-  const preview = principal.tipo_arquivo.startsWith("video/")
-    ? el("video", { className: "post-thumb-img", src: url, controls: "true" })
-    : el("img", { className: "post-thumb-img", src: url, alt: post.tipo_midia, loading: "lazy" });
-  const seloPostado = post.status === "PUBLICADO"
-    ? el("span", { className: "badge badge-ok", text: "✅ Já Postado no IG" })
-    : null;
-  const linkAbrir = el("a", { href: url, target: "_blank", rel: "noopener noreferrer", className: "small post-thumb-link", text: `🔍 Ver Arte (${principal.pasta})` });
-  return el("div", { className: "post-thumb-col" }, [preview, seloPostado, linkAbrir]);
-}
-
-function criarCardPost(post, contaId, midiaPorChave, recarregar) {
-  const midias = (post.midias_chaves || []).map((ch) => midiaPorChave.get(ch)).filter(Boolean);
-  const promptVisual = midias.map((m) => m.resumo_visual).find(Boolean) || "";
-  const jaPostado = post.status === "PUBLICADO";
-  const acoes = [];
-  if (["RASCUNHO", "AGENDADO", "FALHA", "PUBLICADO"].includes(post.status)) {
-    const inputData = el("input", { type: "datetime-local" });
-    const btnAg = el("button", { type: "button", className: "btn-outline", text: jaPostado ? "Agendar Repost" : "Agendar" });
-    btnAg.addEventListener("click", async () => {
-      if (!inputData.value) return notificar("Escolha data e hora.", "erro");
-      try {
-        await apiJson(`/posts/${contaId}/${post.id}/agendar`, "POST", { agendado_para: new Date(inputData.value).toISOString() });
-        notificar("Postagem agendada.");
-        await recarregar();
-      } catch (err) { notificar(err.message, "erro"); }
-    });
-    const btnPub = el("button", { type: "button", className: "btn-primary", text: jaPostado ? "🔄 Repostar Agora" : "Publicar Agora" });
-    btnPub.addEventListener("click", async () => {
-      try {
-        const r = await apiFetch(`/posts/${contaId}/${post.id}/publicar-agora`, { method: "POST" });
-        notificar(r.publicada ? (r.motivo || "Publicado no Instagram!") : r.motivo, r.publicada ? "ok" : "erro");
-        await recarregar();
-      } catch (err) { notificar(err.message, "erro"); }
-    });
-    acoes.push(inputData, btnAg, btnPub);
-    if (!jaPostado) {
-      const btnCanc = el("button", { type: "button", className: "btn-danger", text: "Cancelar" });
-      btnCanc.addEventListener("click", async () => {
-        try {
-          await apiFetch(`/posts/${contaId}/${post.id}/cancelar`, { method: "POST" });
-          notificar("Postagem cancelada.");
-          await recarregar();
-        } catch (err) { notificar(err.message, "erro"); }
-      });
-      acoes.push(btnCanc);
-    }
-  }
-
-  const colInfo = el("div", { className: "post-info-col stack-sm" }, [
-    el("div", { className: "row-between" }, [
-      el("strong", { text: `${post.tipo_midia} • Postagem Gerada` }),
-      el("span", { className: jaPostado ? "badge badge-ok" : "badge", text: jaPostado ? "✅ POSTADO" : post.status }),
-    ]),
-    el("div", { className: "post-texto-box" }, [
-      el("span", { className: "small muted", text: "📝 Legenda & Hashtags:" }),
-      el("p", { className: "post-legenda-txt", text: post.legenda || "(Stories sem legenda)" }),
-    ]),
-    promptVisual ? el("div", { className: "post-prompt-box" }, [
-      el("span", { className: "small muted", text: "🎨 Prompt Gerado para a Imagem:" }),
-      el("p", { className: "small", text: promptVisual }),
-    ]) : null,
-    post.meta_media_id ? el("p", { className: "small", text: `✓ ID Publicação: ${post.meta_media_id}` }) : null,
-    post.erro_detalhe ? el("p", { className: "small muted", text: `Detalhe: ${post.erro_detalhe}` }) : null,
-    el("div", { className: "row-actions" }, acoes),
-  ]);
-
-  return el("div", { className: "item-card post-card-visual" }, [
-    montarColunaMidiaPost(post, contaId, midiaPorChave),
-    colInfo,
-  ]);
+function montarPayloadUnitario(fd, est, contaId) {
+  const tipoConteudo = String(fd.get("tipo_conteudo") || "imagem");
+  let tipoMidia = String(fd.get("posicionamento") || "IMAGE");
+  if (tipoConteudo === "video" && tipoMidia === "IMAGE") tipoMidia = "REELS";
+  const ehReels = tipoMidia === "REELS" || tipoConteudo === "video";
+  const ehTexto = tipoConteudo === "texto";
+  const temAnexo = est.midiaIdsSelecionadas.length > 0;
+  const editarAnexo = !ehReels && !ehTexto && temAnexo && (est.presetsMelhoria.length > 0 || Boolean(est.promptExtra));
+  return {
+    tipoMidia,
+    erro: !ehTexto && est.modo !== "ia" && !temAnexo ? "Anexe/selecione uma mídia ou escolha 'Criar do Zero (IA)'." : "",
+    payload: {
+      conta_ig_id: contaId, tipo_midia: tipoMidia, tema: String(fd.get("tema") || ""),
+      gerar_imagem_ia: !ehReels && !ehTexto && est.modo === "ia",
+      editar_midia_id: editarAnexo ? est.midiaIdsSelecionadas[0] : null,
+      midia_base_ids: editarAnexo ? [] : est.midiaIdsSelecionadas,
+      prompt_visual_extra: est.promptExtra, presets_melhoria: est.presetsMelhoria,
+      proporcao: tipoMidia === "STORIES" || tipoMidia === "REELS" ? "9:16" : "4:5",
+      aplicar_logo: est.aplicarLogo, salvar_rascunho: false,
+    },
+  };
 }
 
 export async function carregarPlanejamentoEPosts(contaId) {
   if (!contaId) return;
+  if (ultimaContaId && ultimaContaId !== contaId) {
+    planoSelecionadoId = "";
+    previaUnitaria = null;
+    seletorSemanal?.limparSelecao();
+    seletorUnitario?.limparSelecao();
+  }
+  ultimaContaId = contaId;
+
   const [planos, posts, midias] = await Promise.all([
     apiFetch(`/planejamento/${contaId}`),
     apiFetch(`/posts/${contaId}`),
     apiFetch(`/biblioteca/${contaId}`),
   ]);
   const midiaPorChave = new Map((midias || []).map((m) => [m.chave_storage, m]));
-  const boxPlanos = document.getElementById("lista-planos");
+  const midiaPorId = new Map((midias || []).map((m) => [m.id, m]));
+
+  renderizarResumoSemanal({
+    container: document.getElementById("resumo-semanal-box"), planos: planos || [], contaId, midiaPorId, planoSelecionadoId,
+    aoAtualizar: async (id) => { planoSelecionadoId = id || ""; await carregarPlanejamentoEPosts(contaId); await carregarBiblioteca(contaId); },
+  });
+  atualizarPrevia(contaId);
+
   const boxPosts = document.getElementById("lista-posts");
-  if (boxPlanos) {
-    limpar(boxPlanos);
-    if (!planos.length) boxPlanos.appendChild(el("p", { className: "muted", text: "Nenhum planejamento criado ainda." }));
-    for (const p of planos) {
-      const postsPlano = posts.filter((pt) => pt.planejamento_id === p.id);
-      boxPlanos.appendChild(criarCardPlano(p, contaId, postsPlano, midiaPorChave, () => carregarPlanejamentoEPosts(contaId)));
-    }
-  }
   if (boxPosts) {
     limpar(boxPosts);
-    if (!posts.length) boxPosts.appendChild(el("p", { className: "muted", text: "Nenhuma postagem encontrada." }));
-    for (const post of posts) boxPosts.appendChild(criarCardPost(post, contaId, midiaPorChave, () => carregarPlanejamentoEPosts(contaId)));
+    const ativos = (posts || []).filter((p) => p.status !== "CANCELADO");
+    if (!ativos.length) return boxPosts.appendChild(el("p", { className: "muted", text: "Nenhuma postagem na Agenda." }));
+    for (const post of ativos) boxPosts.appendChild(criarCardAgenda(post, contaId, midiaPorChave, () => carregarPlanejamentoEPosts(contaId)));
   }
 }
 
 export function inicializarPlanejamento(obterContaAtiva) {
-  document.getElementById("btn-recarregar-planos")?.addEventListener("click", () => carregarPlanejamentoEPosts(obterContaAtiva()));
+  seletorSemanal = criarSeletorMidiaIA({ idContainer: "seletor-midia-semanal", obterContaAtiva, multiplo: true, permitirModoIA: true });
+  seletorUnitario = criarSeletorMidiaIA({ idContainer: "seletor-midia-unitario", obterContaAtiva, multiplo: false, permitirModoIA: true, mostrarLogo: true });
+  const atualizarRestricao = () => {
+    const tipo = document.getElementById("unit-tipo")?.value || "imagem", pos = document.getElementById("unit-posicionamento")?.value || "IMAGE";
+    const ehVideo = tipo === "video" || pos === "REELS";
+    seletorUnitario?.definirRestricao({ bloquearIA: ehVideo || tipo === "texto", aceitar: ehVideo ? "video/mp4,video/quicktime" : "image/jpeg,image/png,image/webp" });
+  };
+  document.getElementById("unit-tipo")?.addEventListener("change", atualizarRestricao);
+  document.getElementById("unit-posicionamento")?.addEventListener("change", atualizarRestricao);
   document.getElementById("btn-recarregar-posts")?.addEventListener("click", () => carregarPlanejamentoEPosts(obterContaAtiva()));
 
   document.getElementById("form-propor-plano")?.addEventListener("submit", async (e) => {
@@ -166,13 +90,16 @@ export function inicializarPlanejamento(obterContaAtiva) {
     const contaId = obterContaAtiva();
     if (!contaId) return;
     const fd = new FormData(e.target);
+    const est = seletorSemanal?.obterEstado() || { midiaIdsSelecionadas: [], presetsMelhoria: [], promptExtra: "" };
     try {
       const p = await apiJson("/planejamento/propor", "POST", {
         conta_ig_id: contaId, semana_inicio: String(fd.get("semana_inicio")),
         quantidade_posts: Number(fd.get("quantidade_posts") || 5),
         nicho: String(fd.get("nicho") || ""), regiao: String(fd.get("regiao") || ""),
         objetivo_semana: String(fd.get("objetivo_semana") || ""), incluir_imagens_ia: Boolean(fd.get("incluir_imagens_ia")),
+        midia_ids_anexadas: est.midiaIdsSelecionadas, presets_melhoria: est.presetsMelhoria, instrucao_melhoria: est.promptExtra,
       });
+      planoSelecionadoId = p.id;
       notificar(`Grade proposta! Custo estimado: $${p.custo_estimado_usd} USD.`);
       await carregarPlanejamentoEPosts(contaId);
     } catch (err) { notificar(err.message, "erro"); }
@@ -182,15 +109,14 @@ export function inicializarPlanejamento(obterContaAtiva) {
     e.preventDefault();
     const contaId = obterContaAtiva();
     if (!contaId) return;
-    const fd = new FormData(e.target);
+    const est = seletorUnitario?.obterEstado() || { modo: "ia", midiaIdsSelecionadas: [], midiasSelecionadas: [], presetsMelhoria: [], promptExtra: "", aplicarLogo: false };
+    const { tipoMidia, erro, payload } = montarPayloadUnitario(new FormData(e.target), est, contaId);
+    if (erro) return notificar(erro, "erro");
     try {
-      const res = await apiJson("/ia/criar", "POST", {
-        conta_ig_id: contaId, tipo_midia: String(fd.get("tipo_midia") || "IMAGE"),
-        tema: String(fd.get("tema") || ""), gerar_imagem_ia: Boolean(fd.get("gerar_imagem_ia")),
-      });
-      notificar(`Rascunho criado ($${res.custo_total_usd} USD).`);
-      e.target.reset();
-      await carregarPlanejamentoEPosts(contaId);
+      const resultado = await apiJson("/ia/criar", "POST", payload);
+      previaUnitaria = { resultado, tipoMidia, midiasBase: est.midiasSelecionadas };
+      notificar(`Prévia gerada ($${resultado.custo_total_usd} USD). Revise antes de enviar para a Agenda.`);
+      atualizarPrevia(contaId);
       await carregarBiblioteca(contaId);
     } catch (err) { notificar(err.message, "erro"); }
   });

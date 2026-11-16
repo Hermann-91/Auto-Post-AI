@@ -30,12 +30,19 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
         html = await cli.get("/painel/")
         assert html.status_code == 200 and "Robo-Auto-Inst" in html.text
         assert "sec-conta-meta" in html.text and "Meta for Developers" in html.text
+        assert "abas-contas-dinamicas" in html.text and "seletor-midia-semanal" in html.text
         assert "https://challenges.cloudflare.com" in html.headers["content-security-policy"]
 
         js_app = await cli.get("/painel/js/app.js")
         js_cfg = await cli.get("/painel/js/config_custos.js")
         css_main = await cli.get("/painel/css/styles.css")
         assert js_app.status_code == 200 and css_main.status_code == 200 and "_blank" in js_cfg.text
+        for rota in (
+            "/painel/css/agenda.css", "/painel/js/planejamento.js",
+            "/painel/js/componentes/seletor_midia_ia.js", "/painel/js/componentes/resumo_orcamento.js",
+            "/painel/js/componentes/modal_recriacao.js", "/painel/js/componentes/card_agenda.js",
+        ):
+            assert (await cli.get(rota)).status_code == 200
 
         pub = await cli.get("/auth/config")
         assert pub.status_code == 200

@@ -6,6 +6,7 @@
   <title>Robo-Auto-Inst • Painel Multi-Conta</title>
   <link rel="stylesheet" href="/painel/css/tokens.css" />
   <link rel="stylesheet" href="/painel/css/styles.css" />
+  <link rel="stylesheet" href="/painel/css/agenda.css" />
 </head>
 <body>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
@@ -39,18 +40,27 @@
   </main>
 
   <div id="app-view" class="app-shell hidden">
-    <header class="glass-bar topbar">
-      <div class="brand"><strong>Robo-Auto-Inst</strong> <span id="usuario-email" class="muted small"></span></div>
-      <div class="topbar-actions">
-        <label class="conta-picker"><span class="small muted">Conta IG:</span><select id="select-conta"></select></label>
-        <button id="btn-abrir-config-conta" type="button" class="btn-outline">⚙ Configurar Conta IG</button>
-        <button id="btn-conectar-meta" type="button" class="btn-outline">↗ OAuth Meta</button>
+    <header class="glass-bar topbar-fixa">
+      <div class="brand-conta">
+        <strong>Robo-Auto-Inst</strong>
+        <span id="usuario-email" class="muted small"></span>
+        <select id="select-conta" aria-label="Conta Instagram ativa"></select>
+      </div>
+      <nav class="nav-head-links" aria-label="Navegação principal">
+        <button type="button" class="nav-btn" data-sec="sec-biblioteca">Biblioteca</button>
+        <button type="button" class="nav-btn active" data-sec="sec-planejamento">Agenda Post</button>
+        <button type="button" class="nav-btn" data-sec="sec-rag">Cultura (RAG)</button>
+        <button type="button" class="nav-btn" data-sec="sec-conta-meta">Contas</button>
+        <button type="button" class="nav-btn" data-sec="sec-custos">Custos</button>
+        <button type="button" class="nav-btn" data-sec="sec-config">Config</button>
+      </nav>
+      <div class="topbar-controles">
         <button id="btn-tema-app" type="button" class="btn-ghost" title="Alternar tema">◐</button>
         <button id="btn-logout" type="button" class="btn-ghost">Sair</button>
       </div>
     </header>
 
-    <nav class="nav-tabs" aria-label="Seções do painel"><button type="button" class="nav-btn active" data-sec="sec-biblioteca">Biblioteca &amp; Cota</button><button type="button" class="nav-btn" data-sec="sec-planejamento">Planejamento &amp; Posts</button><button type="button" class="nav-btn" data-sec="sec-config">Persona, RAG &amp; Custos ($)</button><button type="button" class="nav-btn" data-sec="sec-conta-meta">Conta Instagram &amp; Guia Meta</button></nav>
+    <div id="abas-contas-dinamicas" class="conta-tabs-bar hidden" aria-label="Abas de contas vinculadas"></div>
 
     <section id="sem-conta-aviso" class="glass-card aviso-vazio hidden">
       <h2>Nenhuma conta Instagram conectada</h2>
@@ -61,8 +71,8 @@
       </div>
     </section>
 
-    <main id="conteudo-principal" class="container">
-      <section id="sec-biblioteca" class="painel-sec">
+    <main id="conteudo-principal" class="container-largo">
+      <section id="sec-biblioteca" class="painel-sec hidden">
         <div class="grid-2">
           <article class="glass-card">
             <h3>Cota da Conta &amp; Limpeza</h3>
@@ -97,65 +107,58 @@
         </div>
       </section>
 
-      <section id="sec-planejamento" class="painel-sec hidden">
-        <div class="grid-2">
-          <article class="glass-card">
-            <h3>Planejamento Semanal Automatizado (2 Etapas)</h3>
+      <section id="sec-planejamento" class="painel-sec">
+        <div class="grid-2-agenda">
+          <article class="glass-card stack-sm">
+            <h3>Agendamento Semanal Automático</h3>
             <form id="form-propor-plano" class="stack-sm">
               <div class="row-actions"><label>Início da Semana <input name="semana_inicio" type="date" required /></label><label>Qtd. Posts <input name="quantidade_posts" type="number" min="1" max="14" value="5" /></label></div>
               <div class="row-actions"><label>Nicho <input name="nicho" type="text" placeholder="Ex.: clínica estética" /></label><label>Região <input name="regiao" type="text" placeholder="Brasil" /></label></div>
               <label>Objetivo <input name="objetivo_semana" type="text" value="crescimento orgânico e autoridade" /></label>
-              <label class="check"><input name="incluir_imagens_ia" type="checkbox" checked /> Gerar artes com Nano Banana</label>
-              <button type="submit" class="btn-primary">Etapa 1: Propor Grade &amp; Estimar ($)</button>
+              <label class="check"><input name="incluir_imagens_ia" type="checkbox" checked /> Gerar artes com IA (Nano Banana)</label>
+              <div id="seletor-midia-semanal" class="seletor-midia-box"></div>
+              <button type="submit" class="btn-primary">Gerar Orçamento &amp; Resumo</button>
             </form>
+            <div id="resumo-semanal-box" class="stack-sm"></div>
           </article>
 
-          <article class="glass-card">
-            <h3>Criação Rápida com IA</h3>
+          <article class="glass-card stack-sm">
+            <h3>Criação Unitária</h3>
             <form id="form-criar-ia" class="stack-sm">
               <div class="row-actions">
-                <select name="tipo_midia"><option value="IMAGE">IMAGE</option><option value="CAROUSEL">CAROUSEL</option><option value="REELS">REELS</option><option value="STORIES">STORIES</option></select>
-                <input name="tema" type="text" placeholder="Tema do post" required />
+                <label>Tipo <select name="tipo_conteudo" id="unit-tipo"><option value="imagem">Imagem</option><option value="video">Vídeo</option><option value="texto">Texto</option></select></label>
+                <label>Posicionamento <select name="posicionamento" id="unit-posicionamento"><option value="IMAGE">Post (Feed)</option><option value="STORIES">Stories</option><option value="REELS">Reels</option><option value="CAROUSEL">Carousel</option></select></label>
               </div>
-              <label class="check"><input name="gerar_imagem_ia" type="checkbox" /> Gerar imagem via Nano Banana</label>
-              <button type="submit" class="btn-outline">Gerar Rascunho IA</button>
+              <label>Contexto <textarea name="tema" rows="2" placeholder="Descreva o tema ou contexto da postagem..." required></textarea></label>
+              <div id="seletor-midia-unitario" class="seletor-midia-box"></div>
+              <button type="submit" class="btn-primary">✨ Gerar</button>
             </form>
+            <div id="previa-unitaria-box" class="stack-sm"></div>
           </article>
         </div>
 
-        <article class="glass-card"><div class="row-between"><h3>Planos Semanais</h3><button id="btn-recarregar-planos" type="button" class="btn-ghost">Atualizar</button></div><div id="lista-planos" class="stack-sm"></div></article>
-        <article class="glass-card"><div class="row-between"><h3>Postagens &amp; Agendamento</h3><button id="btn-recarregar-posts" type="button" class="btn-ghost">Atualizar</button></div><div id="lista-posts" class="stack-sm"></div></article>
+        <article class="glass-card stack-sm">
+          <div class="row-between"><h3>Agenda</h3><button id="btn-recarregar-posts" type="button" class="btn-ghost">Atualizar</button></div>
+          <div id="lista-posts" class="grid-agenda-4"></div>
+        </article>
+      </section>
+
+      <section id="sec-rag" class="painel-sec hidden">
+        <article class="glass-card stack-sm">
+          <h3>Cultura da Conta — Base de Conhecimento (RAG)</h3>
+          <form id="form-rag" class="row-actions"><select name="tipo"><option value="TEXTO">TEXTO</option><option value="FAQ">FAQ</option><option value="DOCUMENTO">DOCUMENTO</option></select><input name="titulo" type="text" placeholder="Título da fonte" required /><input name="conteudo" type="text" placeholder="Conteúdo de referência da marca..." required /><button type="submit" class="btn-primary">Indexar</button></form>
+          <div id="lista-rag" class="stack-sm"></div>
+        </article>
+      </section>
+
+      <section id="sec-custos" class="painel-sec hidden">
+        <article class="glass-card"><h3>Orçamento Mensal &amp; Custos OpenRouter ($)</h3><div class="progress-track"><div id="orcamento-bar" class="progress-fill"></div></div><p id="orcamento-detalhe" class="small muted">Carregando orçamento...</p></article>
       </section>
 
       <section id="sec-config" class="painel-sec hidden">
-        <div class="grid-2">
-          <article class="glass-card">
-            <h3>Orçamento Mensal &amp; Custos OpenRouter ($)</h3>
-            <div class="progress-track"><div id="orcamento-bar" class="progress-fill"></div></div>
-            <p id="orcamento-detalhe" class="small muted">Carregando orçamento...</p>
-          </article>
-
-          <article class="glass-card">
-            <h3>Persona &amp; Modelos da Conta</h3>
-            <form id="form-config-ia" class="stack-sm">
-              <label>Marca <input name="marca" type="text" /></label>
-              <label>Nicho <input name="nicho" type="text" /></label>
-              <label>Tom de Voz <input name="tom_voz" type="text" /></label>
-              <div class="row-actions"><label>Modelo Texto <input name="modelo_texto_pref" type="text" required /></label><label>Modelo Imagem <input name="modelo_img_pref" type="text" required /></label></div>
-              <button type="submit" class="btn-primary">Salvar Persona &amp; Modelos</button>
-            </form>
-          </article>
-        </div>
-
         <article class="glass-card">
-          <h3>Base de Conhecimento RAG da Conta</h3>
-          <form id="form-rag" class="row-actions">
-            <select name="tipo"><option value="TEXTO">TEXTO</option><option value="FAQ">FAQ</option><option value="DOCUMENTO">DOCUMENTO</option></select>
-            <input name="titulo" type="text" placeholder="Título da fonte" required />
-            <input name="conteudo" type="text" placeholder="Conteúdo de referência da marca..." required />
-            <button type="submit" class="btn-primary">Indexar</button>
-          </form>
-          <div id="lista-rag" class="stack-sm"></div>
+          <h3>Persona &amp; Modelos da Conta</h3>
+          <form id="form-config-ia" class="stack-sm"><div class="row-actions"><label>Marca <input name="marca" type="text" /></label><label>Nicho <input name="nicho" type="text" /></label><label>Tom de Voz <input name="tom_voz" type="text" /></label></div><div class="row-actions"><label>Modelo Texto <input name="modelo_texto_pref" type="text" required /></label><label>Modelo Imagem <input name="modelo_img_pref" type="text" required /></label></div><button type="submit" class="btn-primary">Salvar Persona &amp; Modelos</button></form>
         </article>
       </section>
 
