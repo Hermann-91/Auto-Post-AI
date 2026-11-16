@@ -29,26 +29,24 @@ class _FakeGatewayOpenRouter:
     async def gerar_texto(
         self, system_prompt: str, user_prompt: str, modelo: str, formato_json: bool = False
     ) -> tuple[str, dict[str, Any]]:
-        _ = (system_prompt, formato_json)
+        _ = formato_json
         if "Planeje" in user_prompt:
-            txt = json.dumps(
-                {
-                    "itens": [
-                        {
-                            "dia_semana": "Terça", "formato": "IMAGE", "tema": "Bastidores",
-                            "objetivo": "autoridade", "ideia_visual": "Estúdio iluminado",
-                            "usar_ia_imagem": True,
-                        }
-                    ]
-                }
-            )
+            txt = json.dumps({"itens": [{
+                "dia_semana": "Terça", "formato": "IMAGE", "tema": "Bastidores",
+                "objetivo": "autoridade", "ideia_visual": "Mesa clara", "usar_ia_imagem": True,
+            }]})
+        elif "DIREÇÃO DE ARTE" in system_prompt:
+            txt = json.dumps({
+                "sujeito_principal": "Arquiteto analisando planta",
+                "acao_e_narrativa": "marcando detalhes", "ambiente": "escritório amplo",
+                "enquadramento_lente": "plano médio 35mm", "iluminacao": "luz natural lateral",
+                "paleta_e_clima": "tons neutros", "evitar": ["texto borrado"],
+                "prompt_imagem_final": "Arquiteto analisando planta em mesa com luz natural",
+            })
         else:
-            txt = json.dumps(
-                {
-                    "legenda": "Legenda da API", "hashtags": ["#marca"],
-                    "prompt_visual": "Foto clean", "roteiro_slides": [],
-                }
-            )
+            txt = json.dumps({
+                "legenda": "Legenda da API", "hashtags": ["#marca"], "roteiro_slides": [],
+            })
         return txt, {
             "openrouter_gen_id": "g-api-txt", "modelo": modelo,
             "tokens_in": 100, "tokens_out": 50, "custo_usd": Decimal("0.0020"),
@@ -66,7 +64,14 @@ class _FakeGatewayOpenRouter:
     async def analisar_imagem(
         self, system_prompt: str, user_prompt: str, imagem_data_url: str, modelo: str
     ) -> tuple[str, dict[str, Any]]:
-        _ = (system_prompt, user_prompt, imagem_data_url)
+        _ = (user_prompt, imagem_data_url)
+        if "CRÍTICO VISUAL" in system_prompt:
+            return json.dumps({
+                "anatomia_correta": True, "sem_texto_corrompido": True,
+                "realismo_fotografico": True, "aderencia_ao_briefing": True,
+                "aprovado": True, "diagnostico_correcao": "",
+            }), {"openrouter_gen_id": "g-api-crit", "modelo": modelo,
+                 "tokens_in": 120, "tokens_out": 30, "custo_usd": Decimal("0.0005")}
         return "Composição limpa em tons frios.", {
             "openrouter_gen_id": "g-api-vis", "modelo": modelo,
             "tokens_in": 90, "tokens_out": 15, "custo_usd": Decimal("0.0005"),
@@ -104,11 +109,8 @@ async def _preparar_sessao_e_conta(app: FastAPI, client: AsyncClient) -> tuple[U
 
     conta = await ia_box.conta_repo.salvar(
         ContaInstagram(
-            empresa_id=empresa_id,
-            ig_user_id="888777",
-            username="agencia_oficial",
-            access_token_enc="enc_tok",
-            token_expira_em=datetime.now(UTC) + timedelta(days=30),
+            empresa_id=empresa_id, ig_user_id="888777", username="agencia_oficial",
+            access_token_enc="enc_tok", token_expira_em=datetime.now(UTC) + timedelta(days=30),
         )
     )
     return empresa_id, conta.id
@@ -116,11 +118,8 @@ async def _preparar_sessao_e_conta(app: FastAPI, client: AsyncClient) -> tuple[U
 
 async def test_fluxo_http_config_rag_criacao_curadoria_e_planejamento(tmp_path: Path) -> None:
     cfg = Configuracoes(
-        app_env="test",
-        cors_origens=["https://painel.exemplo.com"],
-        argon2_time_cost=1,
-        argon2_memory_cost_kib=8192,
-        argon2_parallelism=1,
+        app_env="test", cors_origens=["https://painel.exemplo.com"],
+        argon2_time_cost=1, argon2_memory_cost_kib=8192, argon2_parallelism=1,
         storage_local_dir=str(tmp_path / "media"),
     )
     app = criar_app(cfg)
@@ -160,6 +159,8 @@ async def test_fluxo_http_config_rag_criacao_curadoria_e_planejamento(tmp_path: 
         assert criado.status_code == 200
         body = criado.json()
         assert body["postagem"]["status"] == "RASCUNHO"
+        assert body["qualidade_revisao"]["status"] == "PASS"
+        assert body["revisoes_visuais"] == 1
         midia_id = body["midias_geradas"][0]["id"]
 
         cur = await cli.post(f"/ia/curadoria/{conta_id}/{midia_id}")

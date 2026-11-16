@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 import httpx
@@ -81,10 +82,7 @@ class ClienteOpenRouter:
             return await client.request(metodo, url, headers=headers, json=payload)
 
     async def _requisitar(
-        self,
-        metodo: str,
-        caminho: str,
-        payload: dict[str, Any] | None = None,
+        self, metodo: str, caminho: str, payload: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         url = f"{self._base_url}{caminho}"
         try:
@@ -135,11 +133,7 @@ class ClienteOpenRouter:
                 raise ErroIntegracaoIA(str(exc_fb)) from exc_fb
 
     async def gerar_texto(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        modelo: str,
-        formato_json: bool = False,
+        self, system_prompt: str, user_prompt: str, modelo: str, formato_json: bool = False
     ) -> tuple[str, dict[str, Any]]:
         """Gera texto ou JSON estruturado no OpenRouter com extração de usage.cost."""
         payload = montar_payload_texto(system_prompt, user_prompt, modelo, formato_json)
@@ -148,11 +142,7 @@ class ClienteOpenRouter:
         return texto, extrair_usage(dados, modelo)
 
     async def analisar_imagem(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        imagem_data_url: str,
-        modelo: str,
+        self, system_prompt: str, user_prompt: str, imagem_data_url: str, modelo: str
     ) -> tuple[str, dict[str, Any]]:
         """Executa curadoria visual multimodal com miniatura já compactada."""
         payload = montar_payload_visao(system_prompt, user_prompt, imagem_data_url, modelo)
@@ -160,14 +150,9 @@ class ClienteOpenRouter:
         texto = extrair_texto_mensagem(extrair_mensagem(dados))
         return texto, extrair_usage(dados, modelo)
 
-    async def gerar_ou_editar_imagem(
-        self,
-        prompt: str,
-        modelo: str,
-        imagem_base_url: str | None = None,
+    async def _executar_payload_imagem(
+        self, payload: dict[str, Any], modelo: str
     ) -> tuple[bytes, dict[str, Any]]:
-        """Gera ou edita imagem via Nano Banana (modalities=['image', 'text'])."""
-        payload = montar_payload_imagem(prompt, modelo, imagem_base_url)
         dados = await self._chat_com_fallback(payload, modelo, permitir_fallback_free=False)
         url_saida = extrair_url_imagem_gerada(extrair_mensagem(dados))
         img_bytes = (
@@ -176,6 +161,23 @@ class ClienteOpenRouter:
             else await self._baixar_imagem_https(url_saida)
         )
         return img_bytes, extrair_usage(dados, modelo)
+
+    async def gerar_ou_editar_imagem(
+        self, prompt: str, modelo: str, imagem_base_url: str | None = None
+    ) -> tuple[bytes, dict[str, Any]]:
+        """Gera ou edita imagem via Nano Banana (modalities=['image', 'text'])."""
+        return await self._executar_payload_imagem(
+            montar_payload_imagem(prompt, modelo, imagem_base_url), modelo
+        )
+
+    async def gerar_imagem_com_referencias(
+        self, prompt: str, modelo: str, imagens_base_urls: Sequence[str]
+    ) -> tuple[bytes, dict[str, Any]]:
+        """Gera ou edita imagem enviando múltiplas referências visuais ao Nano Banana."""
+        return await self._executar_payload_imagem(
+            montar_payload_imagem(prompt, modelo, imagens_referencia_urls=imagens_base_urls),
+            modelo,
+        )
 
     async def gerar_embeddings(
         self, textos: list[str], modelo: str

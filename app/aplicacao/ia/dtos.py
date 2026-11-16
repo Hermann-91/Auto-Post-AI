@@ -128,6 +128,10 @@ class CriarConteudoCmd:
     planejamento_id: UUID | None = None
     modelo_texto: str | None = None
     modelo_imagem: str | None = None
+    pilar_editorial: str = ""
+    modo_serie: bool = False
+    etapa_serie: str = ""
+    prompt_avancado: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +147,9 @@ class ConteudoGeradoDTO:
     custo_total_usd: Decimal
     modelos_usados: list[str]
     modo_economico_ativado: bool
+    qualidade_revisao: dict[str, Any] | None = None
+    revisoes_visuais: int = 0
+    tentativas_geracao_imagem: int = 0
 
 
 @dataclass(frozen=True, slots=True)

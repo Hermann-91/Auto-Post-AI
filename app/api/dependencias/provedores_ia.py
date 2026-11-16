@@ -9,6 +9,7 @@ from fastapi import Depends, Request
 from app.api.dependencias.container_ia import ContainerIA
 from app.aplicacao.ia import (
     CriarConteudoUseCase,
+    DiretorArteService,
     EdicaoOrcamentoSemanalUseCase,
     GeradorVisualHibrido,
     PlanejamentoSemanalUseCase,
@@ -61,19 +62,28 @@ def obter_curadoria_uc(
     )
 
 
+def _criar_gerador_visual(
+    c: ContainerIA, orcamento: ServicoOrcamentoUseCase
+) -> GeradorVisualHibrido:
+    cota = CotaMidia(max_itens=c.config.cota_max_itens, max_bytes=c.config.cota_max_bytes)
+    return GeradorVisualHibrido(
+        c.midia_repo, c.storage, c.cliente_ia, orcamento,
+        c.pipeline_midia, ProcessadorImagem.compactar_entrada, cota,
+        cliente_visao=c.cliente_visao,
+        modelo_visao=c.config.openrouter_modelo_visao_padrao,
+    )
+
+
 def obter_criar_conteudo_uc(
     c: Annotated[ContainerIA, Depends(obter_container_ia)],
     orcamento: Annotated[ServicoOrcamentoUseCase, Depends(obter_orcamento_uc)],
     prompts_rag: Annotated[ServicoPromptsRagUseCase, Depends(obter_prompts_rag_uc)],
 ) -> CriarConteudoUseCase:
     cota = CotaMidia(max_itens=c.config.cota_max_itens, max_bytes=c.config.cota_max_bytes)
-    visual = GeradorVisualHibrido(
-        c.midia_repo, c.storage, c.cliente_ia, orcamento,
-        c.pipeline_midia, ProcessadorImagem.compactar_entrada, cota,
-    )
     return CriarConteudoUseCase(
         c.config_ia_repo, c.midia_repo, c.post_repo, c.cliente_ia,
-        orcamento, prompts_rag, visual, cota,
+        orcamento, prompts_rag, _criar_gerador_visual(c, orcamento), cota,
+        diretor_arte=DiretorArteService(c.cliente_ia, orcamento),
     )
 
 
@@ -103,12 +113,8 @@ def obter_recriar_post_uc(
     orcamento: Annotated[ServicoOrcamentoUseCase, Depends(obter_orcamento_uc)],
     prompts_rag: Annotated[ServicoPromptsRagUseCase, Depends(obter_prompts_rag_uc)],
 ) -> RecriarPostagemContextoUseCase:
-    cota = CotaMidia(max_itens=c.config.cota_max_itens, max_bytes=c.config.cota_max_bytes)
-    visual = GeradorVisualHibrido(
-        c.midia_repo, c.storage, c.cliente_ia, orcamento,
-        c.pipeline_midia, ProcessadorImagem.compactar_entrada, cota,
-    )
     return RecriarPostagemContextoUseCase(
         c.config_ia_repo, c.midia_repo, c.post_repo, c.cliente_ia,
-        orcamento, prompts_rag, visual,
+        orcamento, prompts_rag, _criar_gerador_visual(c, orcamento),
+        diretor_arte=DiretorArteService(c.cliente_ia, orcamento),
     )

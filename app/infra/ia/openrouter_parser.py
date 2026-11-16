@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import urlparse
@@ -146,24 +147,24 @@ def montar_payload_visao(
 
 
 def montar_payload_imagem(
-    prompt: str, modelo: str, imagem_base_url: str | None
+    prompt: str, modelo: str, imagem_base_url: str | None = None,
+    imagens_referencia_urls: Sequence[str] = (),
 ) -> dict[str, Any]:
-    """Monta payload Nano Banana (modalities=['image', 'text'])."""
+    """Monta payload Nano Banana (modalities=['image', 'text']) com 0..N referências."""
     prompt_limpo = prompt.strip()
     if not prompt_limpo:
         raise ErroValidacaoDominio("Prompt visual não pode ser vazio.")
+    base = [imagem_base_url] if imagem_base_url is not None else []
+    brutas = [*base, *imagens_referencia_urls]
+    urls = list(dict.fromkeys(validar_url_imagem(u) for u in brutas))
     conteudo_user: str | list[dict[str, Any]] = prompt_limpo
-    if imagem_base_url is not None:
-        url_base = validar_url_imagem(imagem_base_url)
+    if urls:
         conteudo_user = [
             {"type": "text", "text": prompt_limpo},
-            {"type": "image_url", "image_url": {"url": url_base}},
+            *({"type": "image_url", "image_url": {"url": u}} for u in urls),
         ]
-    return {
-        "model": modelo,
-        "modalities": ["image", "text"],
-        "messages": [{"role": "user", "content": conteudo_user}],
-    }
+    return {"model": modelo, "modalities": ["image", "text"],
+            "messages": [{"role": "user", "content": conteudo_user}]}
 
 
 def montar_payload_embeddings(textos: list[str], modelo: str) -> dict[str, Any]:

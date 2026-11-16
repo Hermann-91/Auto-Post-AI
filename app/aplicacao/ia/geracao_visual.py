@@ -1,41 +1,54 @@
-"""Auxiliar de geração/edição Nano Banana com pipeline determinístico $0."""
+"""Auxiliar de geração/edição Nano Banana com crítica VLM e pipeline $0."""
 
 from __future__ import annotations
 
-import base64
 from decimal import Decimal
-from typing import Any
-from uuid import uuid4
+from typing import Any, cast
 
+from app.aplicacao.ia.avaliador_visual import AvaliadorVisualCritico
+from app.aplicacao.ia.diretor_arte import (
+    MAPA_PROMPT_PRESETS,
+    compilar_prompt_geracao,
+    sanitizar_prompt_visual,
+)
 from app.aplicacao.ia.dtos import (
     CompactadorMiniaturaPort,
     CriarConteudoCmd,
     PipelineMidiaPort,
 )
-from app.aplicacao.ia.servico_orcamento import ServicoOrcamentoUseCase, estimar_chamada
+from app.aplicacao.ia.dtos_visuais import (
+    QualidadeRevisaoVisual,
+    ResultadoGeracaoVisual,
+    SceneSpec,
+    VereditoCriticoVisual,
+)
+from app.aplicacao.ia.persistencia_visual import (
+    pos_processar_e_salvar_midia,
+    preparar_referencias_visuais_conta,
+)
+from app.aplicacao.ia.servico_orcamento import (
+    MAX_LOOPS_CRITICA_VISUAL,
+    ServicoOrcamentoUseCase,
+    estimar_chamada,
+    estimar_pipeline_visual,
+)
 from app.dominio.entidades.ia_rag import ConfigIAConta
 from app.dominio.entidades.midia import MidiaBiblioteca
-from app.dominio.excecoes import ErroValidacaoDominio
+from app.dominio.excecoes import ErroOrcamentoExcedido
 from app.dominio.objetos_valor.cota_midia import CotaMidia
-from app.dominio.objetos_valor.enums_conteudo import PastaMidia, TipoMidia
-from app.dominio.portas.ia_meta import ClienteIAPort
+from app.dominio.portas.ia_meta import (
+    ClienteIAPort,
+    ClienteImagemMultireferenciaPort,
+    ClienteVisaoPort,
+)
 from app.dominio.portas.midia_storage import StorageMidiaPort
 from app.dominio.portas.repositorios_conteudo import MidiaRepositoryPort
-from app.infra.midia.processador_imagem import (
-    ProcessadorImagem,
-    abrir_imagem_segura,
-    serializar_jpeg,
-)
 
-MAPA_PROMPT_PRESETS: dict[str, str] = {
-    "fullhd": "ultra high resolution, 8k fullhd, crisp optical sharpness, fine micro-texture",
-    "foto_profissional": "professional studio photography, DSLR 85mm lens, commercial grade",
-    "iluminacao": "balanced HDR studio lighting, soft natural highlights, rich dynamic range",
-}
+__all__ = ["MAPA_PROMPT_PRESETS", "GeradorVisualHibrido"]
 
 
 class GeradorVisualHibrido:
-    """Executa estágio pago opcional (Nano Banana) + pós-processamento obrigatório ($0)."""
+    """Executa Nano Banana, crítica visual VLM (máx 2 loops) e pós-processamento ($0)."""
 
     def __init__(
         self,
@@ -46,100 +59,125 @@ class GeradorVisualHibrido:
         pipeline_midia: PipelineMidiaPort,
         compactador: CompactadorMiniaturaPort,
         cota_midia: CotaMidia | None = None,
+        cliente_visao: ClienteVisaoPort | None = None,
+        modelo_visao: str = "google/gemini-2.5-flash-lite",
+        avaliador_visual: AvaliadorVisualCritico | None = None,
     ) -> None:
-        self._midia_repo = midia_repo
-        self._storage = storage
-        self._ia = cliente_ia
-        self._orcamento = orcamento
-        self._pipeline = pipeline_midia
-        self._compactar = compactador
+        self._midia_repo, self._storage, self._ia = midia_repo, storage, cliente_ia
+        self._orcamento, self._pipeline, self._compactar = orcamento, pipeline_midia, compactador
         self._cota = cota_midia or CotaMidia()
+        self._avaliador = avaliador_visual or (
+            AvaliadorVisualCritico(cliente_visao, orcamento, compactador, modelo_visao)
+            if cliente_visao is not None
+            else None
+        )
 
     async def gerar_e_persistir(
-        self,
-        cmd: CriarConteudoCmd,
-        config: ConfigIAConta,
-        prompt_visual: str,
+        self, cmd: CriarConteudoCmd, config: ConfigIAConta, prompt_visual: str
     ) -> tuple[MidiaBiblioteca, Decimal, str]:
-        """Gera/edita imagem, enquadra no padrão Meta e salva em IA-Cria ou IA-Edita."""
+        """Wrapper retrocompatível retornando (midia, custo_total_usd, modelo_imagem)."""
+        res = await self.gerar_e_persistir_com_revisao(cmd, config, prompt_visual)
+        modelo_img = next((m for m in res.modelos_usados if m), config.modelo_img_pref)
+        return res.midia, res.custo_total_usd, modelo_img
+
+    async def gerar_e_persistir_com_revisao(
+        self, cmd: CriarConteudoCmd, config: ConfigIAConta,
+        prompt_visual: str, scene_spec: SceneSpec | None = None,
+    ) -> ResultadoGeracaoVisual:
+        """Gera/edita com múltiplas referências, crítica em até 2 loops e Pillow."""
         modelo_img = (cmd.modelo_imagem or config.modelo_img_pref).strip()
-        decisao = await self._orcamento.decidir_politica_chamada(
-            cmd.empresa_id,
-            modelo_img,
-            estimar_chamada(modelo_img, eh_imagem=True),
-            exige_imagem_paga=True,
-        )
-
-        imagem_base_url, pasta_destino = await self._preparar_imagem_base(cmd)
-        tags_presets = [
-            MAPA_PROMPT_PRESETS[p.lower()]
-            for p in cmd.presets_melhoria
-            if p.lower() in MAPA_PROMPT_PRESETS
-        ]
-        sufixo_presets = ", ".join(tags_presets)
-        prompt_final = ". ".join(
-            parte
-            for parte in (prompt_visual, cmd.prompt_visual_extra, sufixo_presets)
-            if parte.strip()
-        ).strip(" .")
-        img_ia_bytes, usage = await self._ia.gerar_ou_editar_imagem(
-            prompt=prompt_final,
-            modelo=decisao.modelo_efetivo,
-            imagem_base_url=imagem_base_url,
-        )
-        reg = await self._orcamento.registrar_consumo(cmd.empresa_id, cmd.conta_ig_id, usage)
-
-        tipo_pipe = TipoMidia.IMAGE if cmd.tipo_midia == TipoMidia.CAROUSEL else cmd.tipo_midia
-        proporcao = "9:16" if tipo_pipe == TipoMidia.STORIES else cmd.proporcao
-        aplicar_logo = (
-            config.aplicar_logo_padrao if cmd.aplicar_logo is None else cmd.aplicar_logo
-        )
-        params: dict[str, Any] = {
-            "proporcao": proporcao,
-            "aplicar_logo": aplicar_logo and cmd.logo_bytes is not None,
-            "logo_bytes": cmd.logo_bytes,
-            "eh_video": False,
-        }
-        jpeg_final = (await self._pipeline.processar(tipo_pipe, [img_ia_bytes], params))[0]
-        if cmd.presets_melhoria:
-            img_tratada = ProcessadorImagem.aplicar_presets_melhoria(
-                abrir_imagem_segura(jpeg_final), cmd.presets_melhoria
+        teto = (
+            estimar_pipeline_visual(
+                modelo_img, self._avaliador.modelo_padrao, incluir_regeneracao=False
             )
-            jpeg_final = serializar_jpeg(img_tratada, qualidade=95)
+            if self._avaliador is not None
+            else estimar_chamada(modelo_img, eh_imagem=True)
+        )
+        decisao = await self._orcamento.decidir_politica_chamada(
+            cmd.empresa_id, modelo_img, teto, exige_imagem_paga=True
+        )
+        refs_urls, pasta_destino = await preparar_referencias_visuais_conta(
+            self._midia_repo, self._storage, self._compactar, cmd
+        )
+        img_bytes, custo, modelos, revisao, prompt_usado = await self._executar_loop_visual(
+            cmd, decisao.modelo_efetivo, prompt_visual, refs_urls, scene_spec
+        )
+        resumo = (
+            scene_spec.resumo_anti_repeticao()
+            if scene_spec is not None
+            else sanitizar_prompt_visual(prompt_visual)
+        )[:300]
+        midia = await pos_processar_e_salvar_midia(
+            self._midia_repo, self._storage, self._pipeline, self._cota,
+            cmd, config, img_bytes, pasta_destino, resumo,
+        )
+        return ResultadoGeracaoVisual(
+            midia=midia, custo_total_usd=custo, modelos_usados=modelos,
+            qualidade_revisao=revisao, prompt_final_usado=prompt_usado,
+        )
 
-        qtd, bytes_usados = await self._midia_repo.calcular_uso_cota(
-            cmd.empresa_id, cmd.conta_ig_id
+    async def _executar_loop_visual(
+        self, cmd: CriarConteudoCmd, modelo_efetivo: str, prompt_visual: str,
+        refs_urls: list[str], scene_spec: SceneSpec | None,
+    ) -> tuple[bytes, Decimal, list[str], QualidadeRevisaoVisual, str]:
+        custo_total, modelos_usados, diagnosticos = Decimal("0"), [], []
+        correcao, img_escolhida, prompt_usado = "", b"", ""
+        ultimo_veredito: VereditoCriticoVisual | None = None
+        tentativas, revisoes = 0, 0
+        for tentativa in range(1, MAX_LOOPS_CRITICA_VISUAL + 1):
+            if tentativa > 1:
+                try:
+                    await self._orcamento.decidir_politica_chamada(
+                        cmd.empresa_id, modelo_efetivo,
+                        estimar_chamada(modelo_efetivo, eh_imagem=True), exige_imagem_paga=True,
+                    )
+                except ErroOrcamentoExcedido:
+                    break
+            prompt_usado = compilar_prompt_geracao(
+                prompt_visual, cmd.prompt_avancado, cmd.prompt_visual_extra,
+                cmd.presets_melhoria, correcao,
+            )
+            img_bytes, usage = await self._chamar_gerador_imagem(
+                prompt_usado, modelo_efetivo, refs_urls
+            )
+            reg = await self._orcamento.registrar_consumo(cmd.empresa_id, cmd.conta_ig_id, usage)
+            custo_total += reg.custo_usd
+            modelos_usados.append(reg.modelo)
+            img_escolhida, tentativas = img_bytes, tentativa
+            if self._avaliador is None:
+                return img_escolhida, custo_total, modelos_usados, QualidadeRevisaoVisual(
+                    aprovado=True, tentativas_geracao=tentativas, revisoes_critico=0,
+                    modo_serie=cmd.modo_serie, etapa_serie=cmd.etapa_serie,
+                    pilar_editorial=cmd.pilar_editorial,
+                ), prompt_usado
+            veredito = await self._avaliador.avaliar_imagem(
+                cmd.empresa_id, cmd.conta_ig_id, img_bytes,
+                scene_spec if scene_spec is not None else prompt_usado,
+            )
+            revisoes, ultimo_veredito = revisoes + 1, veredito
+            custo_total += veredito.custo_usd
+            if veredito.modelo_usado:
+                modelos_usados.append(veredito.modelo_usado)
+            if veredito.aprovado:
+                break
+            if veredito.diagnostico_correcao:
+                diagnosticos.append(veredito.diagnostico_correcao)
+                correcao = veredito.diagnostico_correcao
+        revisao = QualidadeRevisaoVisual(
+            aprovado=ultimo_veredito.aprovado if ultimo_veredito else True,
+            tentativas_geracao=tentativas, revisoes_critico=revisoes,
+            ultimo_veredito=ultimo_veredito, historico_diagnosticos=tuple(diagnosticos),
+            modo_serie=cmd.modo_serie, etapa_serie=cmd.etapa_serie,
+            pilar_editorial=cmd.pilar_editorial,
         )
-        self._cota.validar_novo_arquivo(qtd, bytes_usados, len(jpeg_final))
-        chave = MidiaBiblioteca.montar_chave_storage(
-            cmd.empresa_id, cmd.conta_ig_id, pasta_destino, f"ia_{uuid4().hex[:12]}.jpg"
-        )
-        await self._storage.enviar_bytes(chave, jpeg_final, "image/jpeg")
-        midia = MidiaBiblioteca(
-            empresa_id=cmd.empresa_id,
-            conta_ig_id=cmd.conta_ig_id,
-            pasta=pasta_destino,
-            chave_storage=chave,
-            tipo_arquivo="image/jpeg",
-            tamanho_bytes=len(jpeg_final),
-            resumo_visual=prompt_final[:300],
-        )
-        try:
-            salva = await self._midia_repo.salvar(midia)
-        except Exception:
-            await self._storage.remover_objeto(chave)
-            raise
-        return salva, reg.custo_usd, reg.modelo
+        return img_escolhida, custo_total, modelos_usados, revisao, prompt_usado
 
-    async def _preparar_imagem_base(self, cmd: CriarConteudoCmd) -> tuple[str | None, PastaMidia]:
-        if cmd.editar_midia_id is None:
-            return None, PastaMidia.IA_CRIA
-        origem = await self._midia_repo.buscar_por_id(
-            cmd.empresa_id, cmd.conta_ig_id, cmd.editar_midia_id
+    async def _chamar_gerador_imagem(
+        self, prompt: str, modelo: str, refs_urls: list[str]
+    ) -> tuple[bytes, dict[str, Any]]:
+        if len(refs_urls) > 1 and callable(getattr(self._ia, "gerar_imagem_com_referencias", None)):
+            multi = cast(ClienteImagemMultireferenciaPort, self._ia)
+            return await multi.gerar_imagem_com_referencias(prompt, modelo, refs_urls)
+        return await self._ia.gerar_ou_editar_imagem(
+            prompt=prompt, modelo=modelo, imagem_base_url=refs_urls[0] if refs_urls else None
         )
-        if origem is None:
-            raise ErroValidacaoDominio("Mídia para edição não encontrada nesta conta.")
-        bruto = await self._storage.baixar_bytes(origem.chave_storage)
-        mini = self._compactar(bruto, max_lado=1024, qualidade=85)
-        data_url = f"data:image/jpeg;base64,{base64.b64encode(mini).decode('ascii')}"
-        return data_url, PastaMidia.IA_EDITA

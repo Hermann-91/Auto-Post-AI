@@ -100,5 +100,10 @@ def test_formatar_ancoras_prioriza_curtida_favorita() -> None:
         chave_storage="a/b/IA-Cria/f.jpg", tipo_arquivo="image/jpeg", tamanho_bytes=100,
         curtida_favorita=True, resumo_visual="Luz dourada de manhã",
     )
-    texto = ServicoPromptsRagUseCase.formatar_ancoras_visuais([normal, fav], limite=1)
-    assert "[FAVORITA] Luz dourada de manhã" in texto
+    texto = ServicoPromptsRagUseCase.formatar_ancoras_visuais([normal, fav], limite=2)
+    assert "[ANTI-REPETIÇÃO" in texto
+    assert "[DNA_FAVORITO_NAO_COPIAR] Luz dourada de manhã" in texto
+    serie = ServicoPromptsRagUseCase.formatar_ancoras_visuais(
+        [normal, fav], limite=2, modo_serie=True
+    )
+    assert "[CONTINUIDADE DE SÉRIE" in serie and "BASE_SERIE_FAVORITA" in serie

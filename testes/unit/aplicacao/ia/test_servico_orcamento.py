@@ -11,6 +11,7 @@ import pytest
 from app.aplicacao.ia.servico_orcamento import (
     ServicoOrcamentoUseCase,
     estimar_chamada,
+    estimar_pipeline_visual,
     estimar_plano_semanal,
 )
 from app.dominio.entidades.ia_rag import RegistroCustoIA
@@ -104,3 +105,15 @@ async def test_estimativa_registro_e_resumo_mensal_por_conta() -> None:
     assert est == (estimar_chamada("deepseek/deepseek-v4-flash") * 2) + estimar_chamada(
         "google/gemini-3.1-flash-image", eh_imagem=True
     )
+
+    teto_visual = estimar_pipeline_visual(
+        "google/gemini-3.1-flash-image", "google/gemini-2.5-flash-lite", max_loops=2
+    )
+    assert teto_visual == Decimal("0.0930")
+    est_com_critico = estimar_plano_semanal(
+        [{"usar_ia_imagem": True}],
+        "deepseek/deepseek-v4-flash",
+        "google/gemini-3.1-flash-image",
+        modelo_visao="google/gemini-2.5-flash-lite",
+    )
+    assert est_com_critico == Decimal("0.0950")

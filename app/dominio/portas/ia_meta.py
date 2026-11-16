@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any, Protocol
 from uuid import UUID
@@ -24,6 +25,15 @@ class ClienteIAPort(Protocol):
         prompt: str,
         modelo: str,
         imagem_base_url: str | None = None,
+    ) -> tuple[bytes, dict[str, Any]]: ...
+
+
+class ClienteImagemMultireferenciaPort(Protocol):
+    async def gerar_imagem_com_referencias(
+        self,
+        prompt: str,
+        modelo: str,
+        imagens_base_urls: Sequence[str],
     ) -> tuple[bytes, dict[str, Any]]: ...
 
 

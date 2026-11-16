@@ -1,6 +1,8 @@
 """Casos de uso e DTOs de IA: orçamento, prompts/RAG, criação e planejamento."""
 
+from app.aplicacao.ia.avaliador_visual import AvaliadorVisualCritico
 from app.aplicacao.ia.criar_conteudo import CriarConteudoUseCase
+from app.aplicacao.ia.diretor_arte import DiretorArteService
 from app.aplicacao.ia.dtos import (
     AtualizarConfigIACmd,
     CompactadorMiniaturaPort,
@@ -16,6 +18,12 @@ from app.aplicacao.ia.dtos import (
     ResultadoExecucaoPlanoDTO,
     ResumoOrcamentoDTO,
 )
+from app.aplicacao.ia.dtos_visuais import (
+    QualidadeRevisaoVisual,
+    ResultadoGeracaoVisual,
+    SceneSpec,
+    VereditoCriticoVisual,
+)
 from app.aplicacao.ia.edicao_orcamento_semanal import EdicaoOrcamentoSemanalUseCase
 from app.aplicacao.ia.geracao_visual import GeradorVisualHibrido
 from app.aplicacao.ia.planejamento_semanal import PlanejamentoSemanalUseCase
@@ -26,12 +34,14 @@ from app.aplicacao.ia.servico_prompts_rag import ServicoPromptsRagUseCase
 
 __all__ = [
     "AtualizarConfigIACmd",
+    "AvaliadorVisualCritico",
     "CompactadorMiniaturaPort",
     "ConteudoGeradoDTO",
     "CriarConteudoCmd",
     "CriarConteudoUseCase",
     "CuradoriaVisualDTO",
     "DecisaoOrcamentoDTO",
+    "DiretorArteService",
     "EdicaoOrcamentoSemanalUseCase",
     "GeradorVisualHibrido",
     "IndexarArquivoRagCmd",
@@ -40,10 +50,14 @@ __all__ = [
     "PipelineMidiaPort",
     "PlanejamentoSemanalUseCase",
     "ProporPlanejamentoCmd",
+    "QualidadeRevisaoVisual",
     "RecriarPostagemContextoUseCase",
     "ResultadoExecucaoPlanoDTO",
+    "ResultadoGeracaoVisual",
     "ResumoOrcamentoDTO",
+    "SceneSpec",
     "ServicoCuradoriaVisualUseCase",
     "ServicoOrcamentoUseCase",
     "ServicoPromptsRagUseCase",
+    "VereditoCriticoVisual",
 ]

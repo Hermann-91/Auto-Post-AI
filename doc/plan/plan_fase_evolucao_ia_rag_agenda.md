@@ -19,9 +19,9 @@
 - [x] **Fase 1: RAG Híbrido (Arquivos/URLs + Embeddings), Brand Bible & Buscador Web Real**
   - Status: Concluído
   - Commit: `feat(rag): busca hibrida com embeddings por conta, ingestao arquivos/urls, brand bible e buscador web real`
-- [ ] **Fase 2: Pipeline Visual (Diretor de Arte, Séries, Referência Real & Crítico em 2 Loops)**
-  - Status: Pendente
-  - Commit: `pendente`
+- [x] **Fase 2: Pipeline Visual (Diretor de Arte, Séries, Referência Real & Crítico em 2 Loops)**
+  - Status: Concluído
+  - Commit: `feat(visual): diretor de arte documental, series narrativas, referencia real e critico em 2 loops`
 - [ ] **Fase 3: Visão em Fotos Anexadas, Rascunho Só-Texto, Auto-Agendamento & Worker Resiliente**
   - Status: Pendente
   - Commit: `pendente`
@@ -120,3 +120,9 @@
   - `BuscadorWebReal` (DuckDuckGo HTML + fallback RSS seguro anti-XXE parametrizado por `nicho + regiao`) substituiu o Instant Answer mantendo cache de 24h–72h e bloqueio a domínios `instagram.com`/`facebook.com`.
   - `rag_texto.py` atualizado para busca híbrida BM25 + cosseno com descarte de `score == 0`; `prompts_brand_bible.py` pré-compila `brand_bible_json` por conta e ativa `templates_json` no núcleo cacheável do `system_prompt`.
   - Endpoints `POST /contas/{conta_ig_id}/rag/arquivo`, `POST /contas/{conta_ig_id}/rag/url` e `POST /contas/{conta_ig_id}/brand-bible/compilar` adicionados em `contas_rag.py`; migração `0002_rag_hibrido_brand_bible` aplicada e testada. Quality Gate: 48/48 Fase 1 e 141/141 suíte completa verdes.
+- **Fase 2 concluída em 2026-11-16 17:55:**
+  - Porta segregada `ClienteImagemMultireferenciaPort` adicionada em `ia_meta.py` (ISP) e implementada em `ClienteOpenRouter`/`ClienteIANaoConfigurado` via `montar_payload_imagem` multi-referência com validação anti-SSRF.
+  - `dtos_visuais.py` e `persistencia_visual.py` criados para manter 100% dos módulos `<= 200` linhas (`SceneSpec`, `VereditoCriticoVisual`, `QualidadeRevisaoVisual`, I/O de referências reais e Pillow `$0`).
+  - `DiretorArteService` (`diretor_arte.py`) desacoplado do Copywriter em `criar_conteudo.py`: aplica regras documentais globais + identidade visual isolada da conta, remove clichês `"8k/fullhd/HDR/studio"`, suporta `pilar_editorial`, `prompt_avancado`, **Modo Série** (`modo_serie` + `etapa_serie`) e **Memória Anti-Repetição** (`prompts_brand_bible.py` / `servico_prompts_rag.py`).
+  - `AvaliadorVisualCritico` (`avaliador_visual.py`) + `GeradorVisualHibrido` (`geracao_visual.py`) executam loop `gerar -> avaliar VLM -> corrigir` limitado a no máximo **2 iterações**, com teto conservador em `estimar_pipeline_visual` (`servico_orcamento.py`) e registro de custos por iteração.
+  - Bugfix em `recriar_postagem_contexto.py` eliminou duplicação de `contexto_adicional` e vazamento de RAG bruto ao gerador de imagens; campos opcionais expostos em `criacao_ia.py`/`criacao.py` e ligados em `provedores_ia.py`. Quality Gate: 34/34 Fase 2 e 151/151 suíte completa verdes.

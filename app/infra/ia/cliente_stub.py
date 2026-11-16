@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from app.dominio.excecoes import ErroValidacaoDominio
@@ -37,6 +38,15 @@ class ClienteIANaoConfigurado:
         imagem_base_url: str | None = None,
     ) -> tuple[bytes, dict[str, Any]]:
         _ = (prompt, modelo, imagem_base_url)
+        raise ErroValidacaoDominio("OPENROUTER_API_KEY não configurada no servidor.")
+
+    async def gerar_imagem_com_referencias(
+        self,
+        prompt: str,
+        modelo: str,
+        imagens_base_urls: Sequence[str],
+    ) -> tuple[bytes, dict[str, Any]]:
+        _ = (prompt, modelo, imagens_base_urls)
         raise ErroValidacaoDominio("OPENROUTER_API_KEY não configurada no servidor.")
 
     async def gerar_embeddings(

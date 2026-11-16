@@ -193,6 +193,8 @@ class ServicoPromptsRagUseCase:
         return montar_system_prompt_com_brand_bible(conta, config)
 
     @staticmethod
-    def formatar_ancoras_visuais(midias: list[MidiaBiblioteca], limite: int = 4) -> str:
-        """Prioriza mídias curtidas (curtida_favorita=True) como referência estética."""
-        return formatar_ancoras_visuais_lista(midias, limite)
+    def formatar_ancoras_visuais(
+        midias: list[MidiaBiblioteca], limite: int = 5, modo_serie: bool = False
+    ) -> str:
+        """Formata memória negativa anti-repetição ou continuidade de série da conta."""
+        return formatar_ancoras_visuais_lista(midias, limite, modo_serie=modo_serie)

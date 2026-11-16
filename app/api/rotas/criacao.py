@@ -65,6 +65,10 @@ async def criar_conteudo(
             salvar_rascunho=payload.salvar_rascunho,
             modelo_texto=payload.modelo_texto,
             modelo_imagem=payload.modelo_imagem,
+            pilar_editorial=payload.pilar_editorial,
+            modo_serie=payload.modo_serie,
+            etapa_serie=payload.etapa_serie,
+            prompt_avancado=payload.prompt_avancado,
         )
     )
     return CriarConteudoResponse(
@@ -88,6 +92,9 @@ async def criar_conteudo(
         custo_total_usd=res.custo_total_usd,
         modelos_usados=res.modelos_usados,
         modo_economico_ativado=res.modo_economico_ativado,
+        qualidade_revisao=res.qualidade_revisao,
+        revisoes_visuais=res.revisoes_visuais,
+        tentativas_geracao_imagem=res.tentativas_geracao_imagem,
     )
 
 

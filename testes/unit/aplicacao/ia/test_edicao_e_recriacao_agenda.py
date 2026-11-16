@@ -6,6 +6,7 @@ import json
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -158,9 +159,12 @@ async def test_encaixar_3_imagens_e_editar_resumo_orcamento_semanal() -> None:
         conta_ig_id=conta.id,
         semana_inicio=date(2026, 11, 16),
         itens_grade=[
-            {"ordem": 1, "dia_semana": "Seg", "formato": "IMAGE", "tema": "P1", "ideia_visual": "V1", "usar_ia_imagem": False},
-            {"ordem": 2, "dia_semana": "Qua", "formato": "IMAGE", "tema": "P2", "ideia_visual": "V2", "usar_ia_imagem": False},
-            {"ordem": 3, "dia_semana": "Sex", "formato": "REELS", "tema": "P3", "ideia_visual": "V3", "usar_ia_imagem": False},
+            {"ordem": 1, "dia_semana": "Seg", "formato": "IMAGE", "tema": "P1",
+             "ideia_visual": "V1", "usar_ia_imagem": False},
+            {"ordem": 2, "dia_semana": "Qua", "formato": "IMAGE", "tema": "P2",
+             "ideia_visual": "V2", "usar_ia_imagem": False},
+            {"ordem": 3, "dia_semana": "Sex", "formato": "REELS", "tema": "P3",
+             "ideia_visual": "V3", "usar_ia_imagem": False},
         ],
         status=StatusPlanejamento.AGUARDANDO_APROVACAO,
     )
@@ -183,7 +187,7 @@ async def test_encaixar_3_imagens_e_editar_resumo_orcamento_semanal() -> None:
 
 
 @pytest.mark.asyncio
-async def test_recriar_postagem_com_contexto_e_cultura_rag(tmp_path) -> None:
+async def test_recriar_postagem_com_contexto_e_cultura_rag(tmp_path: Path) -> None:
     emp_repo = InMemoryEmpresaRepository()
     conta_repo = InMemoryContaIGRepository()
     cfg_repo = InMemoryConfigIARepository()

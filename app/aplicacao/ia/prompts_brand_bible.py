@@ -124,15 +124,28 @@ def mesclar_brand_bible_ia(base: dict[str, Any], bruto_ia: str) -> dict[str, Any
     return {**base, **{k: v for k, v in extrair_objeto_json(bruto_ia).items() if v}}
 
 
-def formatar_ancoras_visuais_lista(midias: list[MidiaBiblioteca], limite: int = 4) -> str:
-    """Prioriza mídias curtidas (curtida_favorita=True) como referência estética."""
-    ordenadas = sorted(midias, key=lambda m: (m.curtida_favorita, m.criado_em), reverse=True)
-    linhas = [
-        f"- [{'FAVORITA' if m.curtida_favorita else m.pasta.value}] "
-        f"{m.resumo_visual.strip() or m.chave_storage.rsplit('/', 1)[-1]}"
-        for m in ordenadas[:limite]
-    ]
-    return "\n".join(linhas) if linhas else "Sem referências visuais catalogadas ainda."
+def formatar_ancoras_visuais_lista(
+    midias: list[MidiaBiblioteca], limite: int = 5, modo_serie: bool = False
+) -> str:
+    """Formata histórico visual da conta como anti-repetição ou continuidade de série."""
+    if not midias:
+        return "Sem histórico visual recente na conta."
+    recentes = sorted(midias, key=lambda m: m.criado_em, reverse=True)[:limite]
+    favoritas = [m for m in midias if m.curtida_favorita and m not in recentes][:2]
+    selecionadas = [*recentes, *favoritas]
+    cabecalho = (
+        "[CONTINUIDADE DE SÉRIE - mantenha paleta e ambiente variando ação e enquadramento]"
+        if modo_serie
+        else "[ANTI-REPETIÇÃO - NÃO repita sujeito, ângulo ou composição recente abaixo]"
+    )
+    linhas = [cabecalho]
+    for m in selecionadas:
+        desc = (m.resumo_visual.strip() or m.chave_storage.rsplit("/", 1)[-1])[:160]
+        tag = "DNA_FAVORITO_NAO_COPIAR" if m.curtida_favorita else f"EVITAR_{m.pasta.value}"
+        if modo_serie:
+            tag = "BASE_SERIE_FAVORITA" if m.curtida_favorita else f"BASE_SERIE_{m.pasta.value}"
+        linhas.append(f"- [{tag}] {desc}")
+    return "\n".join(linhas)
 
 
 async def enriquecer_brand_bible_com_ia(

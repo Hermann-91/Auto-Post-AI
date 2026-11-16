@@ -67,6 +67,10 @@ class CriarConteudoRequest(BaseModel):
     salvar_rascunho: bool = True
     modelo_texto: str | None = Field(default=None, max_length=160)
     modelo_imagem: str | None = Field(default=None, max_length=160)
+    pilar_editorial: str = Field(default="", max_length=120)
+    modo_serie: bool = False
+    etapa_serie: str = Field(default="", max_length=120)
+    prompt_avancado: str = Field(default="", max_length=500)
 
 
 class MidiaResumoResponse(BaseModel):
@@ -99,6 +103,9 @@ class CriarConteudoResponse(BaseModel):
     custo_total_usd: Decimal
     modelos_usados: list[str]
     modo_economico_ativado: bool
+    qualidade_revisao: dict[str, Any] | None = None
+    revisoes_visuais: int = 0
+    tentativas_geracao_imagem: int = 0
 
 
 class CuradoriaVisualResponse(BaseModel):

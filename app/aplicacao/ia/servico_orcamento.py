@@ -23,6 +23,8 @@ CUSTOS_ESTIMADOS_USD: dict[str, Decimal] = {
 }
 _CUSTO_PADRAO_TEXTO = Decimal("0.0050")
 _CUSTO_PADRAO_IMAGEM = Decimal("0.0450")
+_MODELO_VISAO_PADRAO = "google/gemini-2.5-flash-lite"
+MAX_LOOPS_CRITICA_VISUAL = 2
 
 
 def _modelo_eh_gratuito(modelo: str) -> bool:
@@ -38,15 +40,34 @@ def estimar_chamada(modelo: str, eh_imagem: bool = False) -> Decimal:
     return _CUSTO_PADRAO_IMAGEM if eh_imagem else _CUSTO_PADRAO_TEXTO
 
 
+def estimar_pipeline_visual(
+    modelo_imagem: str,
+    modelo_visao: str = _MODELO_VISAO_PADRAO,
+    max_loops: int = MAX_LOOPS_CRITICA_VISUAL,
+    incluir_regeneracao: bool = True,
+) -> Decimal:
+    """Estima teto conservador do pipeline visual com até N loops de crítica VLM."""
+    loops = max(1, max_loops)
+    geracoes = loops if incluir_regeneracao else 1
+    custo_img = estimar_chamada(modelo_imagem, eh_imagem=True) * geracoes
+    custo_vis = estimar_chamada(modelo_visao, eh_imagem=False) * loops
+    return (custo_img + custo_vis).quantize(Decimal("0.0001"))
+
+
 def estimar_plano_semanal(
     itens: list[dict[str, Any]],
     modelo_texto: str,
     modelo_imagem: str,
+    modelo_visao: str | None = None,
 ) -> Decimal:
     """Calcula estimativa total em USD da Etapa 2 antes da aprovação do usuário."""
     total = Decimal("0.0000")
     custo_txt = estimar_chamada(modelo_texto, eh_imagem=False)
-    custo_img = estimar_chamada(modelo_imagem, eh_imagem=True)
+    custo_img = (
+        estimar_pipeline_visual(modelo_imagem, modelo_visao)
+        if modelo_visao
+        else estimar_chamada(modelo_imagem, eh_imagem=True)
+    )
     for item in itens:
         total += custo_txt
         if bool(item.get("usar_ia_imagem", False)):
@@ -87,33 +108,20 @@ class ServicoOrcamentoUseCase:
         return (gasto_atual + custo_previsto) <= limite
 
     async def decidir_politica_chamada(
-        self,
-        empresa_id: UUID,
-        modelo_desejado: str,
-        custo_estimado: Decimal,
+        self, empresa_id: UUID, modelo_desejado: str, custo_estimado: Decimal,
         exige_imagem_paga: bool = False,
     ) -> DecisaoOrcamentoDTO:
         """Resolve modelo permitido ou bloqueia conforme modo estrito/econômico."""
         limite, bloqueio_estrito, gasto_atual = await self._obter_empresa_e_gasto(empresa_id)
-        if _modelo_eh_gratuito(modelo_desejado):
-            return DecisaoOrcamentoDTO(
-                permitido=True,
-                modelo_efetivo=modelo_desejado,
-                modo_economico_ativado=False,
-                gasto_atual_usd=gasto_atual,
-                limite_mensal_usd=limite,
-            )
 
+        def _decisao(modelo: str, eco: bool) -> DecisaoOrcamentoDTO:
+            return DecisaoOrcamentoDTO(True, modelo, eco, gasto_atual, limite)
+
+        if _modelo_eh_gratuito(modelo_desejado):
+            return _decisao(modelo_desejado, False)
         estourou = gasto_atual >= limite or (gasto_atual + custo_estimado) > limite
         if not estourou:
-            return DecisaoOrcamentoDTO(
-                permitido=True,
-                modelo_efetivo=modelo_desejado,
-                modo_economico_ativado=False,
-                gasto_atual_usd=gasto_atual,
-                limite_mensal_usd=limite,
-            )
-
+            return _decisao(modelo_desejado, False)
         if bloqueio_estrito:
             raise ErroOrcamentoExcedido(
                 f"Limite mensal de ${limite} USD atingido (gasto atual: ${gasto_atual})."
@@ -122,13 +130,7 @@ class ServicoOrcamentoUseCase:
             raise ErroOrcamentoExcedido(
                 "Limite mensal atingido: geração de imagem paga bloqueada no modo econômico."
             )
-        return DecisaoOrcamentoDTO(
-            permitido=True,
-            modelo_efetivo=self._modelo_fallback_free,
-            modo_economico_ativado=True,
-            gasto_atual_usd=gasto_atual,
-            limite_mensal_usd=limite,
-        )
+        return _decisao(self._modelo_fallback_free, True)
 
     async def registrar_consumo(
         self,
@@ -155,9 +157,7 @@ class ServicoOrcamentoUseCase:
         return await self._custo_repo.registrar(registro)
 
     async def obter_resumo_mensal(
-        self,
-        empresa_id: UUID,
-        conta_ig_id: UUID | None = None,
+        self, empresa_id: UUID, conta_ig_id: UUID | None = None
     ) -> ResumoOrcamentoDTO:
         """Retorna resumo mensal de gastos em USD da empresa e opcionalmente da conta IG."""
         limite, bloqueio, gasto_emp = await self._obter_empresa_e_gasto(empresa_id)
