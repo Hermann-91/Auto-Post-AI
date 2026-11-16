@@ -106,6 +106,7 @@ class CriarConteudoRequest(BaseModel):
     editar_midia_id: UUID | None = None
     midia_base_ids: list[UUID] = Field(default_factory=list, max_length=10)
     prompt_visual_extra: str = Field(default="", max_length=500)
+    presets_melhoria: list[str] = Field(default_factory=list, max_length=6)
     proporcao: str = Field(default="4:5", max_length=10)
     aplicar_logo: bool | None = None
     salvar_rascunho: bool = True
@@ -165,6 +166,15 @@ class ProporPlanejamentoRequest(BaseModel):
     quantidade_posts: int = Field(default=5, ge=1, le=14)
     incluir_imagens_ia: bool = True
     ttl_tendencias_horas: int = Field(default=48, ge=24, le=72)
+    midia_ids_anexadas: list[UUID] = Field(default_factory=list, max_length=14)
+    presets_melhoria: list[str] = Field(default_factory=list, max_length=6)
+    instrucao_melhoria: str = Field(default="", max_length=300)
+
+
+class AtualizarItensPlanoRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    itens_grade: list[dict[str, Any]] = Field(min_length=1, max_length=14)
 
 
 class PlanejamentoResponse(BaseModel):

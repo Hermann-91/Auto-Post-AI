@@ -95,6 +95,7 @@ class CriarConteudoCmd:
     editar_midia_id: UUID | None = None
     midia_base_ids: tuple[UUID, ...] = ()
     prompt_visual_extra: str = ""
+    presets_melhoria: tuple[str, ...] = ()
     proporcao: str = "4:5"
     aplicar_logo: bool | None = None
     logo_bytes: bytes | None = None
@@ -142,6 +143,9 @@ class ProporPlanejamentoCmd:
     quantidade_posts: int = 5
     incluir_imagens_ia: bool = True
     ttl_tendencias_horas: int = 48
+    midia_ids_anexadas: tuple[UUID, ...] = ()
+    presets_melhoria: tuple[str, ...] = ()
+    instrucao_melhoria: str = ""
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,14 +7,18 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
+from app.api.dependencias.provedores_ia import obter_recriar_post_uc
 from app.api.dependencias.provedores_meta import obter_agendamento_uc
 from app.api.dependencias.usuario_atual import obter_usuario_atual
 from app.api.schemas.postagens_meta import (
     AgendarPostagemRequest,
     CriarPostagemRequest,
     PostagemDetalheResponse,
+    RecriarPostagemRequest,
     ResultadoPublicacaoResponse,
+    SubstituirMidiaPostagemRequest,
 )
+from app.aplicacao.ia import RecriarPostagemContextoUseCase
 from app.aplicacao.publicacao import (
     AgendarPostagemCmd,
     CriarPostagemCmd,
@@ -136,4 +140,40 @@ async def cancelar_postagem(
     uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
 ) -> PostagemDetalheResponse:
     post = await uc.cancelar_postagem(ctx.empresa_id, conta_ig_id, postagem_id)
+    return _to_post_detalhe(post)
+
+
+@router.post("/{conta_ig_id}/{postagem_id}/recriar", response_model=PostagemDetalheResponse)
+async def recriar_postagem_contexto(
+    conta_ig_id: UUID,
+    postagem_id: UUID,
+    payload: RecriarPostagemRequest,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    uc: Annotated[RecriarPostagemContextoUseCase, Depends(obter_recriar_post_uc)],
+) -> PostagemDetalheResponse:
+    """Recria imagem ou legenda do card da Agenda somando contexto adicional + Cultura RAG."""
+    post = await uc.recriar_com_contexto(
+        empresa_id=ctx.empresa_id,
+        conta_ig_id=conta_ig_id,
+        postagem_id=postagem_id,
+        alvo=payload.alvo,
+        contexto_adicional=payload.contexto_adicional,
+        presets_melhoria=tuple(payload.presets_melhoria),
+        midia_base_id=payload.midia_base_id,
+    )
+    return _to_post_detalhe(post)
+
+
+@router.patch("/{conta_ig_id}/{postagem_id}/midia", response_model=PostagemDetalheResponse)
+async def substituir_midia_postagem(
+    conta_ig_id: UUID,
+    postagem_id: UUID,
+    payload: SubstituirMidiaPostagemRequest,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    uc: Annotated[RecriarPostagemContextoUseCase, Depends(obter_recriar_post_uc)],
+) -> PostagemDetalheResponse:
+    """Substitui a foto do card da Agenda por uma foto externa da Biblioteca ou PC/Mobile."""
+    post = await uc.substituir_midia_externa(
+        ctx.empresa_id, conta_ig_id, postagem_id, payload.nova_midia_id
+    )
     return _to_post_detalhe(post)

@@ -42,6 +42,12 @@ def normalizar_itens_grade(
                 "gancho": str(item.get("gancho") or ""),
                 "ideia_visual": str(item.get("ideia_visual") or ""),
                 "usar_ia_imagem": usar_img,
+                "legenda_previa": str(item.get("legenda_previa") or ""),
+                "editar_midia_id": (
+                    str(item["editar_midia_id"]) if item.get("editar_midia_id") else None
+                ),
+                "midia_base_ids": [str(m) for m in (item.get("midia_base_ids") or [])],
+                "presets_melhoria": [str(p) for p in (item.get("presets_melhoria") or [])],
             }
         )
     if not normalizados:
@@ -84,22 +90,33 @@ def montar_cmd_item_grade(
     """Converte um item da grade semanal em comando de criação individual."""
     formato_orig = normalizar_formato_midia(item.get("formato"))
     gerar_img = bool(item.get("usar_ia_imagem", False))
+    editar_id_str = item.get("editar_midia_id")
+    editar_midia_id = UUID(str(editar_id_str)) if editar_id_str else None
+    midia_base_ids = tuple(UUID(str(m)) for m in (item.get("midia_base_ids") or []) if m)
+    presets = tuple(str(p) for p in (item.get("presets_melhoria") or []) if str(p).strip())
+    legenda_previa = str(item.get("legenda_previa") or "").strip()
+    tem_midia_ou_ia = gerar_img or editar_midia_id is not None or len(midia_base_ids) > 0
     formato_efetivo = (
         TipoMidia.STORIES
         if formato_orig == TipoMidia.STORIES
-        else (TipoMidia.IMAGE if gerar_img else formato_orig)
+        else (TipoMidia.IMAGE if (gerar_img or editar_midia_id is not None) else formato_orig)
     )
     dia = str(item.get("dia_semana") or "").strip()
     tema_base = str(item.get("tema") or "Conteúdo semanal").strip()
+    tom_extra = f"Use como base esta legenda aprovada: {legenda_previa}" if legenda_previa else ""
     return CriarConteudoCmd(
         empresa_id=empresa_id,
         conta_ig_id=conta_ig_id,
         tipo_midia=formato_efetivo,
         tema=f"[{dia} • {formato_orig.value}] {tema_base}" if dia else tema_base,
         objetivo=str(item.get("objetivo") or "engajamento"),
+        tom_extra=tom_extra,
         gerar_imagem_ia=gerar_img,
+        editar_midia_id=editar_midia_id,
+        midia_base_ids=midia_base_ids,
         prompt_visual_extra=str(item.get("ideia_visual") or ""),
+        presets_melhoria=presets,
         proporcao="9:16" if formato_efetivo == TipoMidia.STORIES else "4:5",
-        salvar_rascunho=gerar_img,
+        salvar_rascunho=tem_midia_ou_ia,
         planejamento_id=plano_id,
     )

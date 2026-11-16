@@ -59,6 +59,7 @@ async def criar_conteudo(
             editar_midia_id=payload.editar_midia_id,
             midia_base_ids=tuple(payload.midia_base_ids),
             prompt_visual_extra=payload.prompt_visual_extra,
+            presets_melhoria=tuple(payload.presets_melhoria),
             proporcao=payload.proporcao,
             aplicar_logo=payload.aplicar_logo,
             salvar_rascunho=payload.salvar_rascunho,

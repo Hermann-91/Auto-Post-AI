@@ -9,8 +9,10 @@ from fastapi import Depends, Request
 from app.api.dependencias.container_ia import ContainerIA
 from app.aplicacao.ia import (
     CriarConteudoUseCase,
+    EdicaoOrcamentoSemanalUseCase,
     GeradorVisualHibrido,
     PlanejamentoSemanalUseCase,
+    RecriarPostagemContextoUseCase,
     ServicoCuradoriaVisualUseCase,
     ServicoOrcamentoUseCase,
     ServicoPromptsRagUseCase,
@@ -74,4 +76,29 @@ def obter_planejamento_uc(
     return PlanejamentoSemanalUseCase(
         c.config_ia_repo, c.midia_repo, c.plano_repo, c.cliente_ia,
         c.tendencias, orcamento, prompts_rag, criador,
+    )
+
+
+def obter_edicao_orcamento_uc(
+    c: Annotated[ContainerIA, Depends(obter_container_ia)],
+    prompts_rag: Annotated[ServicoPromptsRagUseCase, Depends(obter_prompts_rag_uc)],
+) -> EdicaoOrcamentoSemanalUseCase:
+    return EdicaoOrcamentoSemanalUseCase(
+        c.config_ia_repo, c.midia_repo, c.plano_repo, prompts_rag
+    )
+
+
+def obter_recriar_post_uc(
+    c: Annotated[ContainerIA, Depends(obter_container_ia)],
+    orcamento: Annotated[ServicoOrcamentoUseCase, Depends(obter_orcamento_uc)],
+    prompts_rag: Annotated[ServicoPromptsRagUseCase, Depends(obter_prompts_rag_uc)],
+) -> RecriarPostagemContextoUseCase:
+    cota = CotaMidia(max_itens=c.config.cota_max_itens, max_bytes=c.config.cota_max_bytes)
+    visual = GeradorVisualHibrido(
+        c.midia_repo, c.storage, c.cliente_ia, orcamento,
+        c.pipeline_midia, ProcessadorImagem.compactar_entrada, cota,
+    )
+    return RecriarPostagemContextoUseCase(
+        c.config_ia_repo, c.midia_repo, c.post_repo, c.cliente_ia,
+        orcamento, prompts_rag, visual,
     )

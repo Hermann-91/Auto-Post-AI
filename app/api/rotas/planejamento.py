@@ -7,15 +7,23 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.dependencias.provedores_ia import obter_planejamento_uc
+from app.api.dependencias.provedores_ia import (
+    obter_edicao_orcamento_uc,
+    obter_planejamento_uc,
+)
 from app.api.dependencias.usuario_atual import obter_usuario_atual
 from app.api.rotas.criacao import to_postagem_resumo
 from app.api.schemas.criacao_ia import (
+    AtualizarItensPlanoRequest,
     ExecucaoPlanejamentoResponse,
     PlanejamentoResponse,
     ProporPlanejamentoRequest,
 )
-from app.aplicacao.ia import PlanejamentoSemanalUseCase, ProporPlanejamentoCmd
+from app.aplicacao.ia import (
+    EdicaoOrcamentoSemanalUseCase,
+    PlanejamentoSemanalUseCase,
+    ProporPlanejamentoCmd,
+)
 from app.dominio.entidades.publicacao import PlanejamentoSemanal
 from app.dominio.portas.seguranca import PayloadAccessToken
 
@@ -40,6 +48,7 @@ async def propor_planejamento(
     payload: ProporPlanejamentoRequest,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[PlanejamentoSemanalUseCase, Depends(obter_planejamento_uc)],
+    edicao_uc: Annotated[EdicaoOrcamentoSemanalUseCase, Depends(obter_edicao_orcamento_uc)],
 ) -> PlanejamentoResponse:
     """Etapa 1: gera grade semanal em JSON com tendências em cache e estimativa USD."""
     plano = await uc.propor_semana(
@@ -53,8 +62,20 @@ async def propor_planejamento(
             quantidade_posts=payload.quantidade_posts,
             incluir_imagens_ia=payload.incluir_imagens_ia,
             ttl_tendencias_horas=payload.ttl_tendencias_horas,
+            midia_ids_anexadas=tuple(payload.midia_ids_anexadas),
+            presets_melhoria=tuple(payload.presets_melhoria),
+            instrucao_melhoria=payload.instrucao_melhoria,
         )
     )
+    if payload.midia_ids_anexadas:
+        plano = await edicao_uc.encaixar_midias_na_semana(
+            empresa_id=ctx.empresa_id,
+            conta_ig_id=payload.conta_ig_id,
+            plano=plano,
+            midia_ids=tuple(payload.midia_ids_anexadas),
+            presets_melhoria=tuple(payload.presets_melhoria),
+            instrucao_melhoria=payload.instrucao_melhoria,
+        )
     return _to_plano_response(plano)
 
 
@@ -76,6 +97,21 @@ async def obter_planejamento(
     uc: Annotated[PlanejamentoSemanalUseCase, Depends(obter_planejamento_uc)],
 ) -> PlanejamentoResponse:
     plano = await uc.obter_plano(ctx.empresa_id, conta_ig_id, plano_id)
+    return _to_plano_response(plano)
+
+
+@router.patch("/{conta_ig_id}/{plano_id}/itens", response_model=PlanejamentoResponse)
+async def atualizar_itens_planejamento(
+    conta_ig_id: UUID,
+    plano_id: UUID,
+    payload: AtualizarItensPlanoRequest,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    edicao_uc: Annotated[EdicaoOrcamentoSemanalUseCase, Depends(obter_edicao_orcamento_uc)],
+) -> PlanejamentoResponse:
+    """Permite editar prompt de imagem, texto, formato e horário no Resumo antes de concluir."""
+    plano = await edicao_uc.atualizar_itens_orcamento(
+        ctx.empresa_id, conta_ig_id, plano_id, payload.itens_grade
+    )
     return _to_plano_response(plano)
 
 

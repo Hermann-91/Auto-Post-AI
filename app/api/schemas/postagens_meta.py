@@ -45,6 +45,21 @@ class AgendarPostagemRequest(BaseModel):
     agendado_para: datetime
 
 
+class RecriarPostagemRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    alvo: str = Field(pattern="^(texto|imagem)$")
+    contexto_adicional: str = Field(default="", max_length=800)
+    presets_melhoria: list[str] = Field(default_factory=list, max_length=6)
+    midia_base_id: UUID | None = None
+
+
+class SubstituirMidiaPostagemRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nova_midia_id: UUID
+
+
 class PostagemDetalheResponse(BaseModel):
     id: UUID
     conta_ig_id: UUID

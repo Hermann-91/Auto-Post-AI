@@ -21,6 +21,17 @@ from app.dominio.objetos_valor.enums_conteudo import PastaMidia, TipoMidia
 from app.dominio.portas.ia_meta import ClienteIAPort
 from app.dominio.portas.midia_storage import StorageMidiaPort
 from app.dominio.portas.repositorios_conteudo import MidiaRepositoryPort
+from app.infra.midia.processador_imagem import (
+    ProcessadorImagem,
+    abrir_imagem_segura,
+    serializar_jpeg,
+)
+
+MAPA_PROMPT_PRESETS: dict[str, str] = {
+    "fullhd": "ultra high resolution, 8k fullhd, crisp optical sharpness, fine micro-texture",
+    "foto_profissional": "professional studio photography, DSLR 85mm lens, commercial grade",
+    "iluminacao": "balanced HDR studio lighting, soft natural highlights, rich dynamic range",
+}
 
 
 class GeradorVisualHibrido:
@@ -60,7 +71,17 @@ class GeradorVisualHibrido:
         )
 
         imagem_base_url, pasta_destino = await self._preparar_imagem_base(cmd)
-        prompt_final = f"{prompt_visual}. {cmd.prompt_visual_extra}".strip(" .")
+        tags_presets = [
+            MAPA_PROMPT_PRESETS[p.lower()]
+            for p in cmd.presets_melhoria
+            if p.lower() in MAPA_PROMPT_PRESETS
+        ]
+        sufixo_presets = ", ".join(tags_presets)
+        prompt_final = ". ".join(
+            parte
+            for parte in (prompt_visual, cmd.prompt_visual_extra, sufixo_presets)
+            if parte.strip()
+        ).strip(" .")
         img_ia_bytes, usage = await self._ia.gerar_ou_editar_imagem(
             prompt=prompt_final,
             modelo=decisao.modelo_efetivo,
@@ -80,6 +101,11 @@ class GeradorVisualHibrido:
             "eh_video": False,
         }
         jpeg_final = (await self._pipeline.processar(tipo_pipe, [img_ia_bytes], params))[0]
+        if cmd.presets_melhoria:
+            img_tratada = ProcessadorImagem.aplicar_presets_melhoria(
+                abrir_imagem_segura(jpeg_final), cmd.presets_melhoria
+            )
+            jpeg_final = serializar_jpeg(img_tratada, qualidade=95)
 
         qtd, bytes_usados = await self._midia_repo.calcular_uso_cota(
             cmd.empresa_id, cmd.conta_ig_id

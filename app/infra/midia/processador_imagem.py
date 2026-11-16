@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from io import BytesIO
 
-from PIL import Image, ImageEnhance, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps, UnidentifiedImageError
 
 from app.dominio.excecoes import ErroValidacaoDominio
 
@@ -116,6 +117,36 @@ class ProcessadorImagem:
         return serializar_jpeg(img, qualidade=qualidade)
 
     @classmethod
+    def aplicar_presets_melhoria(
+        cls,
+        img: Image.Image,
+        presets: Sequence[str] | None = None,
+    ) -> Image.Image:
+        """Aplica presets combináveis (fullhd, iluminacao, foto_profissional) sobre a imagem."""
+        if not presets:
+            return img
+        normalizados = {str(p).strip().lower() for p in presets if str(p).strip()}
+        resultado = converter_para_rgb(img)
+
+        if "iluminacao" in normalizados or "iluminacao_hdr" in normalizados:
+            resultado = ImageOps.autocontrast(resultado, cutoff=1)
+            resultado = ImageEnhance.Brightness(resultado).enhance(1.06)
+            resultado = ImageEnhance.Contrast(resultado).enhance(1.08)
+
+        if "foto_profissional" in normalizados or "profissional" in normalizados:
+            resultado = ImageEnhance.Color(resultado).enhance(1.12)
+            resultado = ImageEnhance.Contrast(resultado).enhance(1.07)
+            resultado = ImageEnhance.Sharpness(resultado).enhance(1.18)
+
+        if "fullhd" in normalizados or "resolucao_fullhd" in normalizados:
+            resultado = resultado.filter(
+                ImageFilter.UnsharpMask(radius=1.7, percent=140, threshold=3)
+            )
+            resultado = ImageEnhance.Sharpness(resultado).enhance(1.15)
+
+        return resultado
+
+    @classmethod
     def otimizar_para_formato(
         cls,
         dados: bytes,
@@ -123,6 +154,7 @@ class ProcessadorImagem:
         fator_contraste: float = 1.05,
         fator_cor: float = 1.05,
         qualidade: int = 94,
+        presets: Sequence[str] | None = None,
     ) -> bytes:
         """Realça contraste/cor opcionais e enquadra na proporção alvo em JPEG RGB."""
         largura_alvo, altura_alvo = cls.resolver_dimensoes(proporcao)
@@ -132,4 +164,5 @@ class ProcessadorImagem:
         if fator_cor != 1.0:
             img = ImageEnhance.Color(img).enhance(fator_cor)
         enquadrada = cls.ajustar_proporcao(img, largura_alvo, altura_alvo)
+        enquadrada = cls.aplicar_presets_melhoria(enquadrada, presets)
         return serializar_jpeg(enquadrada, qualidade=qualidade)
