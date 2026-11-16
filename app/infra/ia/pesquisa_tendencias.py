@@ -1,14 +1,15 @@
-"""Pesquisa web de tendências por nicho/região com cache de 24h a 72h."""
+"""Pesquisa web de tendências e blueprints por nicho/região com cache 24h-72h."""
 
 from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any
 
 import httpx
 
 from app.dominio.excecoes import ErroValidacaoDominio
+from app.infra.ia.buscador_web_real import BuscadorWebPort, BuscadorWebReal
 from app.infra.ia.cache_tendencias import (
     CacheTendenciasMemoria,
     CacheTendenciasPort,
@@ -19,76 +20,14 @@ from app.infra.ia.cache_tendencias import (
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "BuscadorTendenciasDuckDuckGo",
     "BuscadorWebPort",
+    "BuscadorWebReal",
     "CacheTendenciasMemoria",
     "CacheTendenciasPort",
     "CacheTendenciasRedis",
     "ClienteRedisCachePort",
     "PesquisaTendenciasAdapter",
 ]
-
-
-class BuscadorWebPort(Protocol):
-    async def buscar(self, nicho: str, regiao: str) -> list[dict[str, str]]: ...
-
-
-class BuscadorTendenciasDuckDuckGo:
-    """Consulta leve na API Instant Answer do DuckDuckGo via HTTPX."""
-
-    def __init__(
-        self,
-        base_url: str = "https://api.duckduckgo.com/",
-        timeout_segundos: float = 10.0,
-        http_client: httpx.AsyncClient | None = None,
-    ) -> None:
-        self._base_url = base_url
-        self._timeout = timeout_segundos
-        self._http_client = http_client
-
-    async def buscar(self, nicho: str, regiao: str) -> list[dict[str, str]]:
-        params = {
-            "q": f"{nicho} {regiao} tendências instagram",
-            "format": "json",
-            "no_html": "1",
-            "skip_disambig": "1",
-        }
-        if self._http_client is not None:
-            resp = await self._http_client.get(self._base_url, params=params)
-        else:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.get(self._base_url, params=params)
-        resp.raise_for_status()
-        dados = resp.json()
-        return _extrair_topicos_ddg(dados if isinstance(dados, dict) else {})
-
-
-def _extrair_topicos_ddg(dados: dict[str, Any]) -> list[dict[str, str]]:
-    topicos: list[dict[str, str]] = []
-    resumo_principal = str(dados.get("AbstractText") or "").strip()
-    titulo_principal = str(dados.get("Heading") or "").strip()
-    if resumo_principal:
-        topicos.append(
-            {
-                "titulo": titulo_principal or "Visão geral do nicho",
-                "resumo": resumo_principal[:320],
-                "url": str(dados.get("AbstractURL") or ""),
-            }
-        )
-    for item in dados.get("RelatedTopics") or []:
-        if len(topicos) >= 6:
-            break
-        if isinstance(item, dict) and isinstance(item.get("Text"), str):
-            texto = item["Text"].strip()
-            if texto:
-                topicos.append(
-                    {
-                        "titulo": texto[:80],
-                        "resumo": texto[:320],
-                        "url": str(item.get("FirstURL") or ""),
-                    }
-                )
-    return topicos
 
 
 class PesquisaTendenciasAdapter:
@@ -100,7 +39,7 @@ class PesquisaTendenciasAdapter:
         buscador: BuscadorWebPort | None = None,
     ) -> None:
         self._cache = cache or CacheTendenciasMemoria()
-        self._buscador = buscador or BuscadorTendenciasDuckDuckGo()
+        self._buscador = buscador or BuscadorWebReal()
 
     @staticmethod
     def _chave_cache(nicho: str, regiao: str) -> str:

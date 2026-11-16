@@ -140,3 +140,33 @@ async def test_visao_rejeita_ssrf_http_e_stub_nao_configurado_falha() -> None:
     nao_cfg = ClienteIANaoConfigurado()
     with pytest.raises(ErroValidacaoDominio):
         await nao_cfg.gerar_texto("s", "u", "deepseek/deepseek-v4-flash")
+    with pytest.raises(ErroValidacaoDominio):
+        await nao_cfg.gerar_embeddings(["ola"], "openai/text-embedding-3-small")
+
+
+async def test_openrouter_gera_embeddings_ordenados_e_extrai_custo() -> None:
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path.endswith("/embeddings")
+        return httpx.Response(
+            200,
+            json={
+                "id": "emb-1",
+                "model": "openai/text-embedding-3-small",
+                "data": [
+                    {"index": 1, "embedding": [0.0, 1.0]},
+                    {"index": 0, "embedding": [1.0, 0.0]},
+                ],
+                "usage": {"prompt_tokens": 18, "cost": 0.000012},
+            },
+        )
+
+    async with _transport_por_rotas(handler) as http_client:
+        cli = ClienteOpenRouter(api_key="sk-test", http_client=http_client)
+        vetores, usage = await cli.gerar_embeddings(
+            ["primeiro", "segundo"], "openai/text-embedding-3-small"
+        )
+
+    assert vetores == [[1.0, 0.0], [0.0, 1.0]]
+    assert usage["tokens_in"] == 18
+    assert usage["tokens_out"] == 0
+    assert usage["custo_usd"] == Decimal("0.000012")

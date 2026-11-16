@@ -36,8 +36,18 @@ def obter_orcamento_uc(
 
 def obter_prompts_rag_uc(
     c: Annotated[ContainerIA, Depends(obter_container_ia)],
+    orcamento: Annotated[ServicoOrcamentoUseCase, Depends(obter_orcamento_uc)],
 ) -> ServicoPromptsRagUseCase:
-    return ServicoPromptsRagUseCase(c.conta_repo, c.config_ia_repo, c.rag_repo)
+    return ServicoPromptsRagUseCase(
+        conta_repo=c.conta_repo,
+        config_repo=c.config_ia_repo,
+        rag_repo=c.rag_repo,
+        cliente_embeddings=c.cliente_embeddings,
+        extrator_rag=c.extrator_rag,
+        orcamento=orcamento,
+        modelo_embeddings=c.config.openrouter_modelo_embeddings_padrao,
+        cliente_ia=c.cliente_ia,
+    )
 
 
 def obter_curadoria_uc(

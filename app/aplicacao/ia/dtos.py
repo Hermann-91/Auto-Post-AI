@@ -68,6 +68,7 @@ class AtualizarConfigIACmd:
     aplicar_logo_padrao: bool
     modelo_texto_pref: str
     modelo_img_pref: str
+    brand_bible_json: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +80,30 @@ class IndexarFonteRagCmd:
     tipo: TipoFonteRAG
     titulo: str
     conteudo: str
+    resumo_fatos: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class IndexarArquivoRagCmd:
+    """Comando para extrair texto de arquivo (.pdf, .txt, .md) e indexar no RAG."""
+
+    empresa_id: UUID
+    conta_ig_id: UUID
+    nome_arquivo: str
+    conteudo_bytes: bytes
+    tipo: TipoFonteRAG = TipoFonteRAG.DOCUMENTO
+    titulo: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class IndexarUrlRagCmd:
+    """Comando para extrair URL pública e indexar no RAG ou como benchmark."""
+
+    empresa_id: UUID
+    conta_ig_id: UUID
+    url: str
+    tipo: TipoFonteRAG = TipoFonteRAG.URL
+    titulo: str = ""
 
 
 @dataclass(frozen=True, slots=True)

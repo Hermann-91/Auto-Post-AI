@@ -37,6 +37,19 @@ class ClienteVisaoPort(Protocol):
     ) -> tuple[str, dict[str, Any]]: ...
 
 
+class ClienteEmbeddingsPort(Protocol):
+    async def gerar_embeddings(
+        self,
+        textos: list[str],
+        modelo: str,
+    ) -> tuple[list[list[float]], dict[str, Any]]: ...
+
+
+class ExtratorConteudoRagPort(Protocol):
+    def extrair_arquivo(self, nome_arquivo: str, conteudo_bytes: bytes) -> tuple[str, str]: ...
+    async def extrair_url(self, url: str) -> tuple[str, str]: ...
+
+
 class PesquisaTendenciasPort(Protocol):
     async def buscar_tendencias(
         self,

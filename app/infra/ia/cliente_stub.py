@@ -38,3 +38,11 @@ class ClienteIANaoConfigurado:
     ) -> tuple[bytes, dict[str, Any]]:
         _ = (prompt, modelo, imagem_base_url)
         raise ErroValidacaoDominio("OPENROUTER_API_KEY não configurada no servidor.")
+
+    async def gerar_embeddings(
+        self,
+        textos: list[str],
+        modelo: str,
+    ) -> tuple[list[list[float]], dict[str, Any]]:
+        _ = (textos, modelo)
+        raise ErroValidacaoDominio("OPENROUTER_API_KEY não configurada no servidor.")

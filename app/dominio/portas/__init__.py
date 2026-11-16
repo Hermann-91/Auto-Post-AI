@@ -1,7 +1,9 @@
 """Portas e estratégias (Ports & Adapters) da camada de domínio."""
 
 from app.dominio.portas.ia_meta import (
+    ClienteEmbeddingsPort,
     ClienteIAPort,
+    ExtratorConteudoRagPort,
     PesquisaTendenciasPort,
     ProvedorAuthMetaPort,
     PublicadorMidiaStrategyPort,
@@ -36,6 +38,7 @@ from app.dominio.portas.seguranca import (
 
 __all__ = [
     "CaptchaPort",
+    "ClienteEmbeddingsPort",
     "ClienteIAPort",
     "ConfigIARepositoryPort",
     "ContaIGRepositoryPort",
@@ -43,6 +46,7 @@ __all__ = [
     "CustoRepositoryPort",
     "DriveImportPort",
     "EmpresaRepositoryPort",
+    "ExtratorConteudoRagPort",
     "HasherSenhaPort",
     "MidiaRepositoryPort",
     "MidiaStrategyPort",

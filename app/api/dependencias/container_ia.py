@@ -7,7 +7,13 @@ from typing import cast
 
 from app.api.dependencias.container_auth import ContainerAuth
 from app.core.config import Configuracoes
-from app.dominio.portas.ia_meta import ClienteIAPort, ClienteVisaoPort, PesquisaTendenciasPort
+from app.dominio.portas.ia_meta import (
+    ClienteEmbeddingsPort,
+    ClienteIAPort,
+    ClienteVisaoPort,
+    ExtratorConteudoRagPort,
+    PesquisaTendenciasPort,
+)
 from app.dominio.portas.midia_storage import StorageMidiaPort
 from app.dominio.portas.repositorios_conteudo import (
     ConfigIARepositoryPort,
@@ -28,11 +34,12 @@ from app.infra.db.repo_midia_sql import SqlMidiaRepository
 from app.infra.db.repo_post_custo_sql import SqlCustoRepository, SqlPostagemRepository
 from app.infra.db.sessao import criar_session_factory
 from app.infra.ia import (
-    BuscadorTendenciasDuckDuckGo,
+    BuscadorWebReal,
     CacheTendenciasMemoria,
     CacheTendenciasRedis,
     ClienteIANaoConfigurado,
     ClienteOpenRouter,
+    ExtratorConteudoRag,
     PesquisaTendenciasAdapter,
 )
 from app.infra.ia.pesquisa_tendencias import CacheTendenciasPort, ClienteRedisCachePort
@@ -67,11 +74,15 @@ class ContainerIA:
     storage: StorageMidiaPort
     cliente_ia: ClienteIAPort
     cliente_visao: ClienteVisaoPort
+    cliente_embeddings: ClienteEmbeddingsPort
+    extrator_rag: ExtratorConteudoRagPort
     tendencias: PesquisaTendenciasPort
     pipeline_midia: FabricaEstrategiasMidia
 
 
-def _montar_cliente_openrouter(cfg: Configuracoes) -> tuple[ClienteIAPort, ClienteVisaoPort]:
+def _montar_cliente_openrouter(
+    cfg: Configuracoes,
+) -> tuple[ClienteIAPort, ClienteVisaoPort, ClienteEmbeddingsPort]:
     chave = (
         cfg.openrouter_api_key.get_secret_value().strip()
         if cfg.openrouter_api_key is not None
@@ -79,7 +90,7 @@ def _montar_cliente_openrouter(cfg: Configuracoes) -> tuple[ClienteIAPort, Clien
     )
     if not chave:
         stub = ClienteIANaoConfigurado()
-        return stub, stub
+        return stub, stub, stub
     cliente = ClienteOpenRouter(
         api_key=chave,
         base_url=cfg.openrouter_base_url,
@@ -88,7 +99,7 @@ def _montar_cliente_openrouter(cfg: Configuracoes) -> tuple[ClienteIAPort, Clien
         app_title=cfg.openrouter_app_title,
         modelo_fallback_free=cfg.openrouter_modelo_texto_fallback,
     )
-    return cliente, cliente
+    return cliente, cliente, cliente
 
 
 def construir_container_ia(config: Configuracoes, auth: ContainerAuth) -> ContainerIA:
@@ -113,15 +124,21 @@ def construir_container_ia(config: Configuracoes, auth: ContainerAuth) -> Contai
         plano_repo = InMemoryPlanejamentoRepository()
         post_repo, custo_repo = InMemoryPostagemRepository(), InMemoryCustoRepository()
 
-    cliente_ia, cliente_visao = _montar_cliente_openrouter(config)
+    cliente_ia, cliente_visao, cliente_embeddings = _montar_cliente_openrouter(config)
     cache_tend: CacheTendenciasPort = (
         CacheTendenciasRedis(cast(ClienteRedisCachePort, auth.redis_client))
         if auth.redis_client is not None
         else CacheTendenciasMemoria()
     )
-    buscador = BuscadorTendenciasDuckDuckGo(
+    buscador = BuscadorWebReal(
         base_url=config.tendencias_busca_url,
         timeout_segundos=config.tendencias_timeout_segundos,
+        max_resultados=config.tendencias_max_resultados,
+    )
+    extrator = ExtratorConteudoRag(
+        max_arquivo_bytes=config.rag_max_arquivo_bytes,
+        max_chars=config.rag_max_chars_conteudo,
+        timeout_segundos=config.rag_timeout_url_segundos,
     )
     return ContainerIA(
         config=config,
@@ -136,6 +153,8 @@ def construir_container_ia(config: Configuracoes, auth: ContainerAuth) -> Contai
         storage=criar_storage_adapter(config),
         cliente_ia=cliente_ia,
         cliente_visao=cliente_visao,
+        cliente_embeddings=cliente_embeddings,
+        extrator_rag=extrator,
         tendencias=PesquisaTendenciasAdapter(cache=cache_tend, buscador=buscador),
         pipeline_midia=FabricaEstrategiasMidia(),
     )

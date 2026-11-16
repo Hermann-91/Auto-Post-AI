@@ -90,9 +90,14 @@ class Configuracoes(BaseSettings):
     openrouter_modelo_texto_fallback: str = "openrouter/free"
     openrouter_modelo_visao_padrao: str = "google/gemini-2.5-flash-lite"
     openrouter_modelo_img_padrao: str = "google/gemini-3.1-flash-image"
+    openrouter_modelo_embeddings_padrao: str = "openai/text-embedding-3-small"
     tendencias_cache_ttl_horas: int = Field(default=48, ge=24, le=72)
-    tendencias_busca_url: str = "https://api.duckduckgo.com/"
+    tendencias_busca_url: str = "https://html.duckduckgo.com/html/"
     tendencias_timeout_segundos: float = Field(default=10.0, ge=1.0, le=30.0)
+    tendencias_max_resultados: int = Field(default=6, ge=1, le=12)
+    rag_max_arquivo_bytes: int = Field(default=5242880, ge=1024, le=20971520)
+    rag_max_chars_conteudo: int = Field(default=30000, ge=1000, le=100000)
+    rag_timeout_url_segundos: float = Field(default=15.0, ge=2.0, le=60.0)
 
     # Meta Graph API (Instagram Login V1) & Worker de Agendamento
     meta_app_id: str | None = None

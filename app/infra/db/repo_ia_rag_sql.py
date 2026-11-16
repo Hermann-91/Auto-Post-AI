@@ -24,6 +24,7 @@ def _para_config(m: ConfigIAContaModel) -> ConfigIAConta:
         conta_ig_id=m.conta_ig_id,
         persona_json=dict(m.persona_json),
         templates_json=dict(m.templates_json),
+        brand_bible_json=dict(m.brand_bible_json or {}),
         aplicar_logo_padrao=m.aplicar_logo_padrao,
         modelo_texto_pref=m.modelo_texto_pref,
         modelo_img_pref=m.modelo_img_pref,
@@ -39,6 +40,8 @@ def _para_rag(m: FonteRAGModel) -> FonteRAG:
         titulo=m.titulo,
         conteudo_limpo=m.conteudo_limpo,
         chunks=list(m.chunks_json),
+        resumo_fatos=m.resumo_fatos or "",
+        embeddings_chunks=[[float(x) for x in v] for v in (m.embeddings_chunks_json or [])],
         criado_em=m.criado_em,
     )
 
@@ -81,6 +84,7 @@ class SqlConfigIARepository:
             conta_ig_id=config.conta_ig_id,
             persona_json=config.persona_json,
             templates_json=config.templates_json,
+            brand_bible_json=config.brand_bible_json,
             aplicar_logo_padrao=config.aplicar_logo_padrao,
             modelo_texto_pref=config.modelo_texto_pref,
             modelo_img_pref=config.modelo_img_pref,
@@ -105,6 +109,8 @@ class SqlRagRepository:
             titulo=fonte.titulo,
             conteudo_limpo=fonte.conteudo_limpo,
             chunks_json=fonte.chunks,
+            resumo_fatos=fonte.resumo_fatos,
+            embeddings_chunks_json=fonte.embeddings_chunks,
             criado_em=fonte.criado_em,
         )
         async with self._sf() as session, session.begin():

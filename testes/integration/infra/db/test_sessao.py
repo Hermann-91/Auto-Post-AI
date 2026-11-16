@@ -49,6 +49,11 @@ def test_alembic_upgrade_e_downgrade_criam_todas_tabelas(tmp_path: Path) -> None
             row[0]
             for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         }
+        cols_cfg = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(configs_ia_conta)").fetchall()
+        }
+        cols_rag = {row[1] for row in conn.execute("PRAGMA table_info(fontes_rag)").fetchall()}
     esperadas = {
         "empresas",
         "usuarios",
@@ -63,6 +68,8 @@ def test_alembic_upgrade_e_downgrade_criam_todas_tabelas(tmp_path: Path) -> None
         "alembic_version",
     }
     assert esperadas.issubset(tabelas)
+    assert "brand_bible_json" in cols_cfg
+    assert {"resumo_fatos", "embeddings_chunks_json"}.issubset(cols_rag)
 
     command.downgrade(alembic_cfg, "base")
     with sqlite3.connect(db_file) as conn:

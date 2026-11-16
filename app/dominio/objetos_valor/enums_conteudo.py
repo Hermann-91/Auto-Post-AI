@@ -53,3 +53,5 @@ class TipoFonteRAG(StrEnum):
     DOCUMENTO = "DOCUMENTO"
     FAQ = "FAQ"
     LINK = "LINK"
+    URL = "URL"
+    REFERENCIA_BENCHMARK = "REFERENCIA_BENCHMARK"

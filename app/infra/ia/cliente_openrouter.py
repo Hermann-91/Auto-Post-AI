@@ -11,11 +11,13 @@ from app.dominio.excecoes import ErroIntegracaoIA, ErroValidacaoDominio
 from app.infra.ia.cliente_stub import ClienteIANaoConfigurado
 from app.infra.ia.openrouter_parser import (
     decodificar_data_uri,
+    extrair_embeddings,
     extrair_mensagem,
     extrair_texto_mensagem,
     extrair_url_imagem_gerada,
     extrair_usage,
     modelo_eh_gratuito,
+    montar_payload_embeddings,
     montar_payload_imagem,
     montar_payload_texto,
     montar_payload_visao,
@@ -63,19 +65,15 @@ class ClienteOpenRouter:
     def _headers(self) -> dict[str, str]:
         headers = {
             "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-            "X-Title": self._app_title,
+            "Content-Type": "application/json", "X-Title": self._app_title,
         }
         if self._site_url:
             headers["HTTP-Referer"] = self._site_url
         return headers
 
     async def _enviar_http(
-        self,
-        metodo: str,
-        url: str,
-        headers: dict[str, str] | None = None,
-        payload: dict[str, Any] | None = None,
+        self, metodo: str, url: str,
+        headers: dict[str, str] | None = None, payload: dict[str, Any] | None = None,
     ) -> httpx.Response:
         if self._http_client is not None:
             return await self._http_client.request(metodo, url, headers=headers, json=payload)
@@ -117,10 +115,7 @@ class ClienteOpenRouter:
         return dados
 
     async def _chat_com_fallback(
-        self,
-        payload: dict[str, Any],
-        modelo: str,
-        permitir_fallback_free: bool,
+        self, payload: dict[str, Any], modelo: str, permitir_fallback_free: bool
     ) -> dict[str, Any]:
         try:
             return await self._requisitar("POST", "/chat/completions", payload)
@@ -181,6 +176,16 @@ class ClienteOpenRouter:
             else await self._baixar_imagem_https(url_saida)
         )
         return img_bytes, extrair_usage(dados, modelo)
+
+    async def gerar_embeddings(
+        self, textos: list[str], modelo: str
+    ) -> tuple[list[list[float]], dict[str, Any]]:
+        """Gera embeddings em lote no OpenRouter /embeddings com usage.cost."""
+        if not textos:
+            return [], extrair_usage({}, modelo)
+        payload = montar_payload_embeddings(textos, modelo)
+        dados = await self._requisitar("POST", "/embeddings", payload)
+        return extrair_embeddings(dados, len(textos)), extrair_usage(dados, modelo)
 
     async def consultar_geracao(self, gen_id: str) -> dict[str, Any]:
         """Audita custo total, provedor e tokens em cache de uma geração OpenRouter."""

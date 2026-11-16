@@ -86,17 +86,16 @@ def extrair_url_imagem_gerada(msg: dict[str, Any]) -> str:
     imagens = msg.get("images")
     if isinstance(imagens, list) and imagens:
         primeiro = imagens[0]
-        if isinstance(primeiro, dict):
-            img_obj = primeiro.get("image_url")
-            if isinstance(img_obj, dict) and isinstance(img_obj.get("url"), str):
-                return str(img_obj["url"])
+        img_obj = primeiro.get("image_url") if isinstance(primeiro, dict) else None
+        if isinstance(img_obj, dict) and isinstance(img_obj.get("url"), str):
+            return str(img_obj["url"])
     conteudo = msg.get("content")
     if isinstance(conteudo, list):
         for item in conteudo:
             if isinstance(item, dict) and item.get("type") == "image_url":
-                img_obj = item.get("image_url")
-                if isinstance(img_obj, dict) and isinstance(img_obj.get("url"), str):
-                    return str(img_obj["url"])
+                obj = item.get("image_url")
+                if isinstance(obj, dict) and isinstance(obj.get("url"), str):
+                    return str(obj["url"])
     raise ErroIntegracaoIA("Resposta do modelo de imagem não retornou URL/base64 de saída.")
 
 
@@ -115,51 +114,39 @@ def decodificar_data_uri(uri: str) -> bytes:
 
 
 def montar_payload_texto(
-    system_prompt: str,
-    user_prompt: str,
-    modelo: str,
-    formato_json: bool,
+    system_prompt: str, user_prompt: str, modelo: str, formato_json: bool
 ) -> dict[str, Any]:
     """Monta payload OpenRouter para chat textual ou JSON estruturado."""
-    payload: dict[str, Any] = {
-        "model": modelo,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    }
+    msgs = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    payload: dict[str, Any] = {"model": modelo, "messages": msgs}
     if formato_json:
         payload["response_format"] = {"type": "json_object"}
     return payload
 
 
 def montar_payload_visao(
-    system_prompt: str,
-    user_prompt: str,
-    imagem_data_url: str,
-    modelo: str,
+    system_prompt: str, user_prompt: str, imagem_data_url: str, modelo: str
 ) -> dict[str, Any]:
     """Monta payload multimodal validando esquema da imagem contra SSRF."""
     url_segura = validar_url_imagem(imagem_data_url)
+    conteudo = [
+        {"type": "text", "text": user_prompt},
+        {"type": "image_url", "image_url": {"url": url_segura}},
+    ]
     return {
         "model": modelo,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": user_prompt},
-                    {"type": "image_url", "image_url": {"url": url_segura}},
-                ],
-            },
+            {"role": "user", "content": conteudo},
         ],
     }
 
 
 def montar_payload_imagem(
-    prompt: str,
-    modelo: str,
-    imagem_base_url: str | None,
+    prompt: str, modelo: str, imagem_base_url: str | None
 ) -> dict[str, Any]:
     """Monta payload Nano Banana (modalities=['image', 'text'])."""
     prompt_limpo = prompt.strip()
@@ -177,3 +164,31 @@ def montar_payload_imagem(
         "modalities": ["image", "text"],
         "messages": [{"role": "user", "content": conteudo_user}],
     }
+
+
+def montar_payload_embeddings(textos: list[str], modelo: str) -> dict[str, Any]:
+    """Monta payload para OpenRouter /embeddings validando textos não vazios."""
+    limpos = [t.strip() for t in textos if t.strip()]
+    if not limpos or len(limpos) != len(textos):
+        raise ErroValidacaoDominio("Textos para embeddings não podem ser vazios.")
+    return {"model": modelo, "input": limpos}
+
+
+def extrair_embeddings(dados: dict[str, Any], esperado: int) -> list[list[float]]:
+    """Extrai e ordena vetores de embeddings garantindo integridade dimensional."""
+    itens = dados.get("data")
+    if not isinstance(itens, list) or len(itens) != esperado:
+        raise ErroIntegracaoIA("Resposta de embeddings incompatível com os chunks enviados.")
+    ordenados = sorted(
+        (i for i in itens if isinstance(i, dict)),
+        key=lambda i: int(i.get("index", 0)),
+    )
+    vetores: list[list[float]] = []
+    for item in ordenados:
+        bruto = item.get("embedding")
+        if not isinstance(bruto, list) or not bruto:
+            raise ErroIntegracaoIA("Vetor de embedding ausente ou vazio na resposta.")
+        vetores.append([float(v) for v in bruto])
+    if len(vetores) != esperado:
+        raise ErroIntegracaoIA("Quantidade de embeddings inválida retornada pelo OpenRouter.")
+    return vetores

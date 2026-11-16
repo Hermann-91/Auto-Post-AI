@@ -42,6 +42,7 @@ class ConfigIAContaModel(Base):
     )
     persona_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     templates_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    brand_bible_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     aplicar_logo_padrao: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     modelo_texto_pref: Mapped[str] = mapped_column(String(160), nullable=False)
     modelo_img_pref: Mapped[str] = mapped_column(String(160), nullable=False)
@@ -64,6 +65,10 @@ class FonteRAGModel(Base):
     titulo: Mapped[str] = mapped_column(String(240), nullable=False)
     conteudo_limpo: Mapped[str] = mapped_column(Text, nullable=False)
     chunks_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    resumo_fatos: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    embeddings_chunks_json: Mapped[list[list[float]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     criado_em: Mapped[datetime] = mapped_column(DateTimeUTC(), nullable=False)
 
 

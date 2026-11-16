@@ -9,7 +9,7 @@ import httpx
 from redis.exceptions import RedisError
 
 from app.infra.ia.pesquisa_tendencias import (
-    BuscadorTendenciasDuckDuckGo,
+    BuscadorWebReal,
     CacheTendenciasMemoria,
     CacheTendenciasRedis,
     PesquisaTendenciasAdapter,
@@ -41,26 +41,22 @@ async def test_pesquisa_tendencias_usa_cache_memoria_e_limita_ttl_24_72h() -> No
     def handler(_req: httpx.Request) -> httpx.Response:
         nonlocal chamadas
         chamadas += 1
-        return httpx.Response(
-            200,
-            json={
-                "Heading": "Cafeteria Especial",
-                "AbstractText": "Métodos filtrados e drinks gelados em alta.",
-                "AbstractURL": "https://exemplo.com/cafe",
-                "RelatedTopics": [
-                    {"Text": "Matcha artesanal cresce no verão", "FirstURL": "https://ex.com/m"}
-                ],
-            },
+        html = (
+            '<a class="result__a" href="https://ex.com/cafe">Cafeteria Especial</a>'
+            '<a class="result__snippet">Metodos filtrados e drinks gelados em alta.</a>'
+            '<a class="result__a" href="https://ex.com/m">Matcha artesanal</a>'
+            '<a class="result__snippet">Matcha cresce no verao.</a>'
         )
+        return httpx.Response(200, text=html)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        buscador = BuscadorTendenciasDuckDuckGo(http_client=client)
+        buscador = BuscadorWebReal(http_client=client, usar_fallback_rss=False)
         adapter = PesquisaTendenciasAdapter(cache=CacheTendenciasMemoria(), buscador=buscador)
 
         primeiro = await adapter.buscar_tendencias("Cafeteria", "Curitiba", ttl_horas=10)
         segundo = await adapter.buscar_tendencias(" cafeteria ", "curitiba", ttl_horas=100)
 
-    assert chamadas == 1
+    assert chamadas == 2
     assert primeiro["cache_hit"] is False
     assert primeiro["ttl_horas"] == 24
     assert len(primeiro["topicos"]) == 2
@@ -75,7 +71,7 @@ async def test_pesquisa_tendencias_redis_e_fallback_offline() -> None:
         raise httpx.ConnectError("sem internet")
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler_erro)) as client:
-        buscador = BuscadorTendenciasDuckDuckGo(http_client=client)
+        buscador = BuscadorWebReal(http_client=client, usar_fallback_rss=False)
         adapter = PesquisaTendenciasAdapter(cache=cache, buscador=buscador)
         res = await adapter.buscar_tendencias("Moda Sustentável", "SP", ttl_horas=48)
 

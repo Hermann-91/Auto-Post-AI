@@ -75,20 +75,27 @@ async def test_config_ia_rag_e_planejamento_por_conta(
     assert padrao.aplicar_logo_padrao is False
     padrao.aplicar_logo_padrao = True
     padrao.persona_json = {"tom": "tecnico"}
+    padrao.brand_bible_json = {"marca": "IA A", "nicho": "cafe"}
     await cfg_repo.salvar(padrao)
     lida = await cfg_repo.obter_ou_padrao(emp_id, conta_a)
     assert lida.aplicar_logo_padrao is True and lida.persona_json["tom"] == "tecnico"
+    assert lida.brand_bible_json["nicho"] == "cafe"
 
     fonte = FonteRAG(
         empresa_id=emp_id,
         conta_ig_id=conta_a,
-        tipo=TipoFonteRAG.FAQ,
+        tipo=TipoFonteRAG.URL,
         titulo="Horários",
         conteudo_limpo="Atendemos das 8h às 18h.",
         chunks=["Atendemos das 8h às 18h."],
+        resumo_fatos="Atendimento 8h-18h",
+        embeddings_chunks=[[0.25, 0.75]],
     )
     await rag_repo.salvar(fonte)
-    assert len(await rag_repo.listar_por_conta(emp_id, conta_a)) == 1
+    salvas = await rag_repo.listar_por_conta(emp_id, conta_a)
+    assert len(salvas) == 1
+    assert salvas[0].resumo_fatos == "Atendimento 8h-18h"
+    assert salvas[0].embeddings_chunks == [[0.25, 0.75]]
     assert len(await rag_repo.listar_por_conta(emp_id, conta_b)) == 0
     assert await rag_repo.remover(emp_id, conta_b, fonte.id) is False
     assert await rag_repo.remover(emp_id, conta_a, fonte.id) is True
