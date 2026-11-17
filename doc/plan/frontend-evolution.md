@@ -82,9 +82,9 @@ A partir da inspeção direta dos screenshots reais do painel e da auditoria de 
 - [x] **Fase 2: Card Independente & Minimizado de "Grades Programadas"**
   - Status: Concluído
   - Commit: `22ab9e3`
-- [ ] **Fase 3: Estúdio Refinado & Cards da Agenda Profissionais (3 Colunas)**
-  - Status: Pendente
-  - Commit: `-`
+- [x] **Fase 3: Estúdio Refinado & Cards da Agenda Profissionais (3 Colunas)**
+  - Status: Concluído
+  - Commit: `414d364`
 - [ ] **Fase 4: Polimento das Abas Secundárias, Responsividade & Auditoria**
   - Status: Pendente
   - Commit: `-`
@@ -105,3 +105,10 @@ A partir da inspeção direta dos screenshots reais do painel e da auditoria de 
   - Extraído `frontend/js/componentes/item_grade.js` (106 linhas, SRP) para renderizar cada item em mini-card de 2 colunas com badges coloridos (`IMAGE`, `CAROUSEL`, `REELS`, `STORIES`), prévia visual/placeholder e switch `Imagem IA` alinhado; sincronizada troca de lote em `frontend/js/planejamento.js` (`aoSelecionarPlano`).
   - Removidas classes legadas/mortas (`.resumo-*`, `.previa-unitaria-*`) e adicionados estilos responsivos em `frontend/css/agenda.css` (123 linhas); cobertura ampliada em `testes/integration/api/rotas/test_painel_frontend.py` (196 linhas).
   - Quality Gate: 6/6 arquivos `<= 196` linhas, zero `innerHTML`, `node --check OK`, `ruff check .` limpo, `mypy app/ testes/ --strict` limpo em 253 arquivos, `pytest testes/ -v` com `168 passed`.
+- **Fase 3 concluída em 2026-11-17 (`414d364`):**
+  - Extraído `frontend/js/componentes/agenda_filtros.js` (54 linhas, SRP) para renderizar os filtros de status (`Todos`, `Rascunhos`, `Aguardando Mídia`, `Agendados`, `Publicados` e `Falhas` condicional) com contadores numéricos em cache local e empty states acionáveis; integrado em `frontend/js/planejamento.js` (173 linhas).
+  - Refatorado `frontend/js/componentes/card_agenda.js` (174 linhas): removidos os botões literais `"o"` (substituídos por `wand` na mídia e `pencil` na legenda via `frontend/js/icones.js`, 115 linhas com `+send` e `+alertCircle`), adicionados badge de formato `.badge-fmt`, badges semânticos por status e barra de ações em 2 linhas (linha 1: `datetime-local` completo + agendar; linha 2: CTA `Postar Agora`/`Repostar` + lixeira).
+  - Refinado `frontend/js/componentes/estudio_unificado.js` (193 linhas) com barra superior única de modos + atalhos destacados, switches (`switch small`) para Série/Auto-agendar, `Pilar Editorial` alinhado e ícones SVG sem emojis.
+  - Atualizados `frontend/index.html` (195 linhas) e `frontend/css/agenda.css` (132 linhas) migrando `.grid-agenda-4` para `.grid-agenda-3` (`repeat(3, minmax(0, 1fr))` acima de `1080px`, `2` colunas em tablet, `1` em mobile) e removendo `.btn-circular-recriar`.
+  - Cobertura ampliada em `testes/integration/api/rotas/test_painel_frontend.py` (199 linhas) validando ausência de `grid-agenda-4`, `btn-circular-recriar` e `text: "o"`, além de zero `innerHTML` em todos os assets JS/CSS.
+  - Quality Gate: 8/8 arquivos `<= 199` linhas, zero `innerHTML`, `node --check OK`, `ruff check .` limpo, `mypy app/ testes/ --strict` limpo em 253 arquivos, `pytest testes/ -v` com `168 passed`.
