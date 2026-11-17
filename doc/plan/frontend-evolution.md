@@ -88,9 +88,9 @@ A partir da inspeção direta dos screenshots reais do painel e da auditoria de 
 - [x] **Fase 4: Polimento das Abas Secundárias, Responsividade & Auditoria**
   - Status: Concluído
   - Commit: `c82b93a`
-- [ ] **Fase Final: Auditoria, Revisão Geral & Hardening**
-  - Status: Pendente
-  - Commit: `-`
+- [x] **Fase Final: Auditoria, Revisão Geral & Hardening**
+  - Status: Concluído
+  - Commit: `f2101c7`
 
 ## 5. Log de Decisões e Handoff
 - **Fase 1 concluída em 2026-11-17 (`a7bd80e`):**
@@ -120,3 +120,9 @@ A partir da inspeção direta dos screenshots reais do painel e da auditoria de 
   - Estruturado `frontend/index.html` (194 linhas) + `frontend/css/paineis.css` (132 linhas) + ajustes responsivos em `styles.css` (117 linhas) e `agenda.css` (132 linhas) eliminando overflow horizontal em mobile (`390x844`) e desktop (`1366x900`) nos temas dark e light.
   - Inspeção visual via `/chrome-control` (15 capturas em dark/light, desktop/mobile, estado vazio e erro JSON) com `0` overflows e `erros_runtime: []`; adicionada suíte `testes/integration/api/rotas/test_painel_secundarias.py` (89 linhas).
   - Quality Gate: 100% dos arquivos `<= 199` linhas, zero `innerHTML`, `node --check OK`, `ruff check .` limpo, `mypy app/ testes/ --strict` limpo em 254 arquivos, `pytest testes/ -v` com `169 passed`.
+- **Fase Final concluída em 2026-11-17 (`f2101c7`):**
+  - Corrigido bug real detectado na inspeção visual: `frontend/js/planejamento.js` passou a chamar `estudio?.recarregarSeletor()` em `carregarPlanejamentoEPosts`, exibindo imediatamente as mídias da conta ativa no seletor *Da Biblioteca* após login/troca de conta.
+  - Eliminada duplicação (DRY) entre `card_agenda.js` e `modal_recriacao.js` unificando `ACOES_RAPIDAS_IMAGEM`; substituídos todos os emojis restantes em `seletor_midia_ia.js`, `modal_recriacao.js` e `planejamento.js` por ícones SVG de `icones.js`.
+  - Removidas classes CSS mortas herdadas de `frontend/css/styles.css` (`.btn-ok-soft`, `.nav-tabs`, `.container`, `.topbar-actions`, `.item-card`, `.post-card-visual`, `.post-thumb-*`, `.post-prompt-box`, `.post-legenda-txt`, `.plano-thumbs-grid`, `.plano-mini-card`) e `frontend/css/agenda.css` (`.grid-2-agenda`).
+  - Hardening em `test_painel_secundarias.py` e `test_painel_frontend.py` garantindo ausência de emojis legados, zero `innerHTML`, zero CSS morto e limite `<= 200` linhas em 100% dos arquivos da base (`app/`, `frontend/`, `testes/`).
+  - Quality Gate Final: 100% dos arquivos `<= 200` linhas, `node --check OK`, `ruff check .` limpo, `mypy app/ testes/ --strict` limpo em 254 arquivos, `pytest testes/ -v` com `169 passed` e inspeção visual via `/chrome-control` com `0` overflows e `erros_runtime: []`.
