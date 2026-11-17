@@ -79,9 +79,9 @@ A partir da inspeção direta dos screenshots reais do painel e da auditoria de 
 - [x] **Fase 1: Exclusão de Planejamento no Backend + Design Tokens & Ícones SVG**
   - Status: Concluído
   - Commit: `a7bd80e`
-- [ ] **Fase 2: Card Independente & Minimizado de "Grades Programadas"**
-  - Status: Pendente
-  - Commit: `-`
+- [x] **Fase 2: Card Independente & Minimizado de "Grades Programadas"**
+  - Status: Concluído
+  - Commit: `22ab9e3`
 - [ ] **Fase 3: Estúdio Refinado & Cards da Agenda Profissionais (3 Colunas)**
   - Status: Pendente
   - Commit: `-`
@@ -99,3 +99,9 @@ A partir da inspeção direta dos screenshots reais do painel e da auditoria de 
   - Rota `DELETE /planejamento/{conta_ig_id}/{plano_id}` retorna `204` ou `404` isolado por `(empresa_id, conta_ig_id)`; suíte de testes dedicada criada em `testes/integration/api/rotas/test_exclusao_planejamento.py`.
   - Adicionados design tokens de elevação/semântica (`frontend/css/tokens.css`), correção de especificidade de checkboxes/switches e `:focus-visible` (`frontend/css/styles.css`), e módulo SVG seguro via `createElementNS` sem `innerHTML` (`frontend/js/icones.js`).
   - Quality Gate: 14/14 arquivos `<= 190` linhas, `ruff check .` limpo, `mypy app/ testes/ --strict` limpo em 253 arquivos, `pytest testes/ -v` com `168 passed`.
+- **Fase 2 concluída em 2026-11-17 (`22ab9e3`):**
+  - Desacoplado `#resumo-semanal-box` em `<article class="glass-card stack-sm grades-card hidden">` independente entre o Estúdio e a Agenda (`frontend/index.html`), oculto automaticamente quando não há lotes.
+  - Refatorado `frontend/js/componentes/resumo_orcamento.js` (154 linhas) com cabeçalho compacto (seletor de lote, status humanizado, botão **Aprovar & Gerar na Agenda** e botão **Excluir Lote** via `DELETE /planejamento/{contaId}/{planoId}` bloqueado quando `EM_EXECUCAO`), além de acordeão `<details class="grade-detalhes">` fechado por padrão com resumo de formatos.
+  - Extraído `frontend/js/componentes/item_grade.js` (106 linhas, SRP) para renderizar cada item em mini-card de 2 colunas com badges coloridos (`IMAGE`, `CAROUSEL`, `REELS`, `STORIES`), prévia visual/placeholder e switch `Imagem IA` alinhado; sincronizada troca de lote em `frontend/js/planejamento.js` (`aoSelecionarPlano`).
+  - Removidas classes legadas/mortas (`.resumo-*`, `.previa-unitaria-*`) e adicionados estilos responsivos em `frontend/css/agenda.css` (123 linhas); cobertura ampliada em `testes/integration/api/rotas/test_painel_frontend.py` (196 linhas).
+  - Quality Gate: 6/6 arquivos `<= 196` linhas, zero `innerHTML`, `node --check OK`, `ruff check .` limpo, `mypy app/ testes/ --strict` limpo em 253 arquivos, `pytest testes/ -v` com `168 passed`.
