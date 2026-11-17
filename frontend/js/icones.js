@@ -72,6 +72,15 @@ const ICON_DEFS = {
     ["polyline", { points: "2 17 12 22 22 17" }],
     ["polyline", { points: "2 12 12 17 22 12" }],
   ],
+  send: [
+    ["line", { x1: "22", y1: "2", x2: "11", y2: "13" }],
+    ["polygon", { points: "22 2 15 22 11 13 2 9 22 2" }],
+  ],
+  alertCircle: [
+    ["circle", { cx: "12", cy: "12", r: "10" }],
+    ["line", { x1: "12", y1: "8", x2: "12", y2: "12" }],
+    ["line", { x1: "12", y1: "16", x2: "12.01", y2: "16" }],
+  ],
 };
 
 export function criarIcone(nome, { tamanho = 16, classe = "", titulo = "" } = {}) {

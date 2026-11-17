@@ -1,11 +1,29 @@
 import { acompanharJobIA, apiFetch, apiJson, executarJobIA } from "/painel/js/api.js";
 import { carregarBiblioteca } from "/painel/js/biblioteca.js";
+import { criarEstadoVazioAgenda, filtrarPostsAgenda, renderizarFiltrosAgenda } from "/painel/js/componentes/agenda_filtros.js";
 import { criarCardAgenda } from "/painel/js/componentes/card_agenda.js";
 import { criarEstudioUnificado } from "/painel/js/componentes/estudio_unificado.js";
 import { renderizarResumoSemanal } from "/painel/js/componentes/resumo_orcamento.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
+import { iconeTexto } from "/painel/js/icones.js";
 
-let estudio = null, planoSelecionadoId = "", ultimaContaId = "", pollCtrl = null;
+let estudio = null, planoSelecionadoId = "", ultimaContaId = "", pollCtrl = null, filtroAgenda = "TODOS", cacheAgenda = null;
+
+function renderizarListaAgenda() {
+  const boxPosts = document.getElementById("lista-posts");
+  if (!boxPosts || !cacheAgenda) return;
+  const { contaId, ativos, midiaPorChave } = cacheAgenda;
+  filtroAgenda = renderizarFiltrosAgenda({
+    container: document.getElementById("agenda-filtros-status"),
+    ativos, filtroAtivo: filtroAgenda,
+    aoTrocar: (novoFiltro) => { filtroAgenda = novoFiltro; renderizarListaAgenda(); },
+  });
+  limpar(boxPosts);
+  const filtrados = filtrarPostsAgenda(ativos, filtroAgenda);
+  if (!filtrados.length) return boxPosts.appendChild(criarEstadoVazioAgenda({ temAtivos: Boolean(ativos.length), aoLimparFiltro: () => { filtroAgenda = "TODOS"; renderizarListaAgenda(); } }));
+  const recarregar = async () => { await carregarPlanejamentoEPosts(contaId); await carregarBiblioteca(contaId); };
+  for (const post of filtrados) boxPosts.appendChild(criarCardAgenda(post, contaId, midiaPorChave, recarregar));
+}
 
 function renderizarJobStatus(job) {
   const box = document.getElementById("job-status-box");
@@ -55,6 +73,8 @@ export async function carregarPlanejamentoEPosts(contaId) {
     pollCtrl?.abort();
     pollCtrl = new AbortController();
     planoSelecionadoId = "";
+    filtroAgenda = "TODOS";
+    cacheAgenda = null;
     renderizarJobStatus(null);
     estudio?.limparMidias();
   }
@@ -75,13 +95,8 @@ export async function carregarPlanejamentoEPosts(contaId) {
     aoAtualizar: async (id) => { planoSelecionadoId = id || ""; await carregarPlanejamentoEPosts(contaId); await carregarBiblioteca(contaId); },
   });
 
-  const boxPosts = document.getElementById("lista-posts");
-  if (boxPosts) {
-    limpar(boxPosts);
-    const ativos = (posts || []).filter((p) => p.status !== "CANCELADO");
-    if (!ativos.length) return boxPosts.appendChild(el("p", { className: "muted", text: "Nenhuma postagem na Agenda." }));
-    for (const post of ativos) boxPosts.appendChild(criarCardAgenda(post, contaId, midiaPorChave, async () => { await carregarPlanejamentoEPosts(contaId); await carregarBiblioteca(contaId); }));
-  }
+  cacheAgenda = { contaId, ativos: (posts || []).filter((p) => p.status !== "CANCELADO"), midiaPorChave };
+  renderizarListaAgenda();
   if (jobsAtivos?.length) {
     estudio?.definirOcupado(true);
     acompanharJobIA(jobsAtivos[0].id, { aoProgredir: renderizarJobStatus, signal: pollCtrl.signal })
@@ -106,7 +121,12 @@ async function enviarManualZero(contaId, dados) {
 }
 
 export function inicializarPlanejamento(obterContaAtiva) {
-  document.getElementById("btn-recarregar-posts")?.addEventListener("click", () => carregarPlanejamentoEPosts(obterContaAtiva()));
+  const btnRecarregar = document.getElementById("btn-recarregar-posts");
+  if (btnRecarregar) {
+    limpar(btnRecarregar);
+    btnRecarregar.append(...iconeTexto("refresh", "Atualizar", { tamanho: 14 }));
+    btnRecarregar.addEventListener("click", () => carregarPlanejamentoEPosts(obterContaAtiva()));
+  }
   estudio = criarEstudioUnificado({
     raiz: document.getElementById("estudio-unificado-root"),
     obterContaAtiva,

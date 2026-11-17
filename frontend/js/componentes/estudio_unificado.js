@@ -1,10 +1,16 @@
 import { apiJson } from "/painel/js/api.js";
 import { criarSeletorMidiaIA } from "/painel/js/componentes/seletor_midia_ia.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
+import { iconeTexto } from "/painel/js/icones.js";
 
-const MODOS = [["SO_TEXTO", "📝 Só Texto (Planejar 1º)"], ["IA_COMPLETA", "✨ IA Completa"], ["MANUAL_ZERO", "📷 Manual $0"]];
+const MODOS = [
+  ["SO_TEXTO", "Só Texto", "Planejar 1º só em texto"],
+  ["IA_COMPLETA", "IA Completa", "Texto + imagem com IA"],
+  ["MANUAL_ZERO", "Manual $0", "Publicação manual sem custo de IA"],
+];
 const FORMATOS = [["IMAGE", "Feed"], ["CAROUSEL", "Carrossel"], ["REELS", "Reels"], ["STORIES", "Stories"]];
 const PILARES = ["Educativo", "Bastidores", "Autoridade", "Prova Social", "Oferta", "Tendência"];
+const ATALHOS = [["1 Post", { IMAGE: 1 }], ["Mix 5", { IMAGE: 3, REELS: 1, STORIES: 1 }], ["Semana 7", { IMAGE: 3, CAROUSEL: 2, REELS: 1, STORIES: 1 }]];
 
 function proximaSegundaISO() {
   const d = new Date();
@@ -22,7 +28,7 @@ export function criarEstudioUnificado({ raiz, obterContaAtiva, aoSubmeter }) {
   };
 
   const form = el("form", { id: "form-estudio-unificado", className: "stack-sm" });
-  const boxModos = el("div", { className: "tabs-inline" });
+  const boxModos = el("div", { className: "estudio-modos-seg", role: "tablist", "aria-label": "Modo de criação" });
   const badgeTotal = el("span", { className: "badge badge-ok" });
   const boxQuantidades = el("div", { className: "estudio-grid-formatos" });
   const boxPilares = el("div", { className: "estudio-pilares" });
@@ -35,24 +41,22 @@ export function criarEstudioUnificado({ raiz, obterContaAtiva, aoSubmeter }) {
   const boxAgendaLote = el("label", { className: "hidden" }, [el("span", { text: "Início da Semana" }), inpSemana]);
   const boxAgendaUnit = el("label", {}, [el("span", { text: "Agendar (opcional)" }), inpAgendarPara]);
   const boxSeletor = el("div", { id: "seletor-midia-semanal", className: "seletor-midia-box" });
-  const btnCurarLote = el("button", { type: "button", className: "btn-ghost btn-sm hidden", text: "🏆 IA Eleger Melhor Foto" });
+  const btnCurarLote = el("button", { type: "button", className: "btn-ghost btn-sm btn-inline-icone hidden" }, iconeTexto("sparkles", "IA Eleger Melhor Foto", { tamanho: 14 }));
 
   const txtAvancado = el("textarea", { name: "prompt_avancado", rows: "2", placeholder: "Direção visual ou instrução extra opcional..." });
   const inpTom = el("input", { name: "tom_extra", type: "text", placeholder: "Ex.: mais direto" });
   const inpNicho = el("input", { name: "nicho", type: "text", placeholder: "Nicho (usa Persona se vazio)" });
   const inpRegiao = el("input", { name: "regiao", type: "text", placeholder: "Brasil" });
   const detalhesAvancado = el("details", { className: "estudio-avancado" }, [
-    el("summary", { text: "⚙️ Prompt Avançado Opcional (Direção, Tom, Nicho/Região)" }),
+    el("summary", { className: "btn-inline-icone" }, iconeTexto("sliders", "Prompt Avançado Opcional (Direção, Tom, Nicho/Região)", { tamanho: 15 })),
     el("div", { className: "stack-sm" }, [
       txtAvancado,
-      el("div", { className: "row-actions" }, [
-        el("label", {}, [el("span", { text: "Tom Extra" }), inpTom]),
-        el("label", {}, [el("span", { text: "Nicho" }), inpNicho]),
-        el("label", {}, [el("span", { text: "Região" }), inpRegiao]),
-      ]),
+      el("div", { className: "row-actions" }, [["Tom Extra", inpTom], ["Nicho", inpNicho], ["Região", inpRegiao]].map(([lbl, inp]) =>
+        el("label", {}, [el("span", { text: lbl }), inp])
+      )),
     ]),
   ]);
-  const btnSubmit = el("button", { type: "submit", className: "btn-primary" });
+  const btnSubmit = el("button", { type: "submit", className: "btn-primary btn-inline-icone estudio-submit-btn" });
 
   const totalItens = () => Object.values(estado.quantidades).reduce((a, b) => a + b, 0);
 
@@ -68,20 +72,21 @@ export function criarEstudioUnificado({ raiz, obterContaAtiva, aoSubmeter }) {
       ? "Legenda manual (vazio para Stories)..."
       : "Tema opcional (Zero-Prompt: ou escolha um Pilar acima)...";
     for (const b of boxModos.querySelectorAll("button")) b.classList.toggle("active", b.dataset.modo === estado.modo);
+    for (const { btn, mapa } of atalhosBtns) btn.classList.toggle("active", FORMATOS.every(([k]) => estado.quantidades[k] === (mapa[k] || 0)));
     const temAnexo = (estado.seletor?.obterEstado().midiaIdsSelecionadas.length || 0) >= 2;
     btnCurarLote.classList.toggle("hidden", !temAnexo || estado.modo === "MANUAL_ZERO");
     btnSubmit.disabled = estado.ocupado;
-    if (estado.ocupado) {
-      btnSubmit.textContent = "⏳ Processando job em segundo plano...";
-      return;
-    }
-    if (estado.modo === "MANUAL_ZERO") btnSubmit.textContent = "📅 Enviar Manual p/ Agenda ($0)";
-    else if (ehLote) btnSubmit.textContent = "📊 Propor Grade & Orçamento ($)";
-    else btnSubmit.textContent = estado.modo === "SO_TEXTO" ? "📝 Gerar Rascunho Só-Texto" : "✨ Gerar Post com IA";
+    const [ic, txt] = estado.ocupado ? ["refresh", "Processando job em segundo plano..."]
+      : estado.modo === "MANUAL_ZERO" ? ["calendar", "Enviar Manual p/ Agenda ($0)"]
+      : ehLote ? ["layers", "Propor Grade & Orçamento ($)"]
+      : estado.modo === "SO_TEXTO" ? ["pencil", "Gerar Rascunho Só-Texto"]
+      : ["sparkles", "Gerar Post com IA"];
+    limpar(btnSubmit);
+    btnSubmit.append(...iconeTexto(ic, txt, { tamanho: 16 }));
   }
 
-  MODOS.forEach(([id, label]) => {
-    const btn = el("button", { type: "button", className: "tab-btn small", "data-modo": id, text: label });
+  MODOS.forEach(([id, label, dica]) => {
+    const btn = el("button", { type: "button", className: "estudio-modo-btn", "data-modo": id, title: dica, text: label });
     btn.addEventListener("click", () => {
       estado.modo = id;
       estado.seletor?.definirRestricao({ bloquearIA: id === "MANUAL_ZERO" });
@@ -99,19 +104,18 @@ export function criarEstudioUnificado({ raiz, obterContaAtiva, aoSubmeter }) {
   });
 
   const aplicarPresetQtd = (mapa) => {
-    for (const [k] of FORMATOS) {
-      estado.quantidades[k] = mapa[k] || 0;
-      inputsQtd[k].value = String(estado.quantidades[k]);
-    }
+    for (const [k] of FORMATOS) { estado.quantidades[k] = mapa[k] || 0; inputsQtd[k].value = String(estado.quantidades[k]); }
     atualizarUI();
   };
-  const atalhos = el("div", { className: "row-actions" }, [
+  const atalhosBtns = ATALHOS.map(([t, mapa]) => {
+    const btn = el("button", { type: "button", className: "btn-ghost btn-sm estudio-atalho-btn", text: t });
+    btn.addEventListener("click", () => aplicarPresetQtd(mapa));
+    return { btn, mapa };
+  });
+  const atalhos = el("div", { className: "estudio-atalhos-grupo" }, [
     badgeTotal,
-    ...[["1 Post", { IMAGE: 1 }], ["Mix 5", { IMAGE: 3, REELS: 1, STORIES: 1 }], ["Semana 7", { IMAGE: 3, CAROUSEL: 2, REELS: 1, STORIES: 1 }]].map(([t, m]) => {
-      const b = el("button", { type: "button", className: "btn-ghost btn-sm", text: t });
-      b.addEventListener("click", () => aplicarPresetQtd(m));
-      return b;
-    }),
+    el("span", { className: "small muted", text: "Atalhos" }),
+    ...atalhosBtns.map((a) => a.btn),
   ]);
 
   PILARES.forEach((pilar) => {
@@ -141,13 +145,13 @@ export function criarEstudioUnificado({ raiz, obterContaAtiva, aoSubmeter }) {
   });
 
   form.append(
-    boxModos, atalhos, boxQuantidades,
-    el("div", { className: "stack-sm" }, [el("span", { className: "small muted", text: "Pilares Editoriais (opcional)" }), boxPilares]),
+    el("div", { className: "estudio-topo-barra" }, [boxModos, atalhos]),
+    boxQuantidades,
+    el("div", { className: "estudio-pilares-linha" }, [el("span", { className: "small muted", text: "Pilar Editorial" }), boxPilares]),
     inpTema,
-    el("div", { className: "row-actions" }, [
-      el("label", { className: "check small" }, [chkSerie, el("span", { text: "Modo Série Narrativa" })]),
-      el("label", { className: "check small" }, [chkAutoAgendar, el("span", { text: "Auto-agendar na grade" })]),
-    ]),
+    el("div", { className: "row-actions" }, [[chkSerie, "Modo Série Narrativa"], [chkAutoAgendar, "Auto-agendar na grade"]].map(([chk, txt]) =>
+      el("label", { className: "switch small" }, [chk, el("span", { text: txt })])
+    )),
     inpEtapaSerie,
     el("div", { className: "row-actions" }, [boxAgendaLote, boxAgendaUnit]),
     boxSeletor, btnCurarLote, detalhesAvancado, btnSubmit

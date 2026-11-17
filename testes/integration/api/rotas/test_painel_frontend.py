@@ -41,29 +41,32 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
         js_cfg = await cli.get("/painel/js/config_custos.js")
         css_main = await cli.get("/painel/css/styles.css")
         assert js_app.status_code == 200 and css_main.status_code == 200 and "_blank" in js_cfg.text
-        for rota in (
-            "/painel/css/tokens.css", "/painel/css/agenda.css",
-            "/painel/js/icones.js", "/painel/js/planejamento.js",
-            "/painel/js/rag.js",
-            "/painel/js/componentes/estudio_unificado.js",
-            "/painel/js/componentes/seletor_midia_ia.js",
-            "/painel/js/componentes/item_grade.js",
-            "/painel/js/componentes/resumo_orcamento.js",
-            "/painel/js/componentes/modal_recriacao.js", "/painel/js/componentes/card_agenda.js",
-        ):
-            assert (await cli.get(rota)).status_code == 200
-        icones_js = (await cli.get("/painel/js/icones.js")).text
-        resumo_js = (await cli.get("/painel/js/componentes/resumo_orcamento.js")).text
-        item_grade_js = (await cli.get("/painel/js/componentes/item_grade.js")).text
-        assert '<article id="resumo-semanal-box"' in html.text
-        assert "createElementNS" in icones_js and "innerHTML" not in icones_js
-        assert "grade-detalhes" in resumo_js and "DELETE" in resumo_js
-        assert "innerHTML" not in resumo_js and "innerHTML" not in item_grade_js
-        assert "--surface-inset" in (await cli.get("/painel/css/tokens.css")).text
-        estudio_js = (await cli.get("/painel/js/componentes/estudio_unificado.js")).text
-        card_js = (await cli.get("/painel/js/componentes/card_agenda.js")).text
-        assert "MANUAL_ZERO" in estudio_js and "SO_TEXTO" in estudio_js
-        assert "Aguardando mídia" in card_js and "Mais natural" in card_js
+        p = "/painel/js/componentes"
+        rotas = (
+            "/painel/css/tokens.css", "/painel/css/agenda.css", "/painel/js/icones.js",
+            "/painel/js/planejamento.js", "/painel/js/rag.js", f"{p}/estudio_unificado.js",
+            f"{p}/seletor_midia_ia.js", f"{p}/item_grade.js", f"{p}/resumo_orcamento.js",
+            f"{p}/modal_recriacao.js", f"{p}/card_agenda.js", f"{p}/agenda_filtros.js",
+        )
+        resps = {r: (await cli.get(r)) for r in rotas}
+        assert all(resp.status_code == 200 for resp in resps.values())
+        t = {r: resp.text for r, resp in resps.items()}
+        ag, re = t["/painel/css/agenda.css"], t[f"{p}/resumo_orcamento.js"]
+        es, ca = t[f"{p}/estudio_unificado.js"], t[f"{p}/card_agenda.js"]
+        ic = t["/painel/js/icones.js"]
+        assert '<article id="resumo-semanal-box"' in html.text and "grid-agenda-3" in html.text
+        assert "Estúdio de Criação</h3>" in html.text and "agenda-filtros-status" in html.text
+        assert "grid-agenda-4" not in html.text and "grade-detalhes" in re and "DELETE" in re
+        assert "--surface-inset" in t["/painel/css/tokens.css"]
+        assert "createElementNS" in ic and "send" in ic and "alertCircle" in ic
+        assert ".grid-agenda-3" in ag and ".grid-agenda-4" not in ag
+        assert ".agenda-acoes-linha-data" in ag and ".btn-circular-recriar" not in ag
+        assert "MANUAL_ZERO" in es and "SO_TEXTO" in es and "switch small" in es
+        assert "estudio-topo-barra" in es and "Aguardando mídia" in ca and "Mais natural" in ca
+        assert 'text: "o"' not in ca and "btn-circular-recriar" not in ca
+        assert "agenda-acoes-linha-cta" in ca and "criarIcone" in ca
+        assert "SEM_MIDIA" in t[f"{p}/agenda_filtros.js"]
+        assert all("innerHTML" not in body for body in t.values())
 
         pub = await cli.get("/auth/config")
         assert pub.status_code == 200

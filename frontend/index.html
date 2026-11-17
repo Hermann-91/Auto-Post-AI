@@ -110,7 +110,7 @@
       <section id="sec-planejamento" class="painel-sec">
         <article class="glass-card stack-sm">
           <div class="row-between">
-            <h3>Estúdio de Criação &amp; Agenda</h3>
+            <h3>Estúdio de Criação</h3>
             <span class="badge">Zero-Prompt • Jobs Assíncronos</span>
           </div>
           <div id="estudio-unificado-root" class="stack-sm"></div>
@@ -120,8 +120,14 @@
         <article id="resumo-semanal-box" class="glass-card stack-sm grades-card hidden" aria-live="polite"></article>
 
         <article class="glass-card stack-sm">
-          <div class="row-between"><h3>Agenda</h3><button id="btn-recarregar-posts" type="button" class="btn-ghost">Atualizar</button></div>
-          <div id="lista-posts" class="grid-agenda-4"></div>
+          <div class="agenda-header">
+            <h3>Agenda de Publicações</h3>
+            <div class="agenda-header-controles">
+              <div id="agenda-filtros-status" class="agenda-filtros" role="tablist" aria-label="Filtrar postagens por status"></div>
+              <button id="btn-recarregar-posts" type="button" class="btn-outline btn-sm btn-inline-icone">Atualizar</button>
+            </div>
+          </div>
+          <div id="lista-posts" class="grid-agenda-3"></div>
         </article>
       </section>
 
