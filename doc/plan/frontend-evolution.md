@@ -85,9 +85,9 @@ A partir da inspeção direta dos screenshots reais do painel e da auditoria de 
 - [x] **Fase 3: Estúdio Refinado & Cards da Agenda Profissionais (3 Colunas)**
   - Status: Concluído
   - Commit: `414d364`
-- [ ] **Fase 4: Polimento das Abas Secundárias, Responsividade & Auditoria**
-  - Status: Pendente
-  - Commit: `-`
+- [x] **Fase 4: Polimento das Abas Secundárias, Responsividade & Auditoria**
+  - Status: Concluído
+  - Commit: `c82b93a`
 - [ ] **Fase Final: Auditoria, Revisão Geral & Hardening**
   - Status: Pendente
   - Commit: `-`
@@ -112,3 +112,11 @@ A partir da inspeção direta dos screenshots reais do painel e da auditoria de 
   - Atualizados `frontend/index.html` (195 linhas) e `frontend/css/agenda.css` (132 linhas) migrando `.grid-agenda-4` para `.grid-agenda-3` (`repeat(3, minmax(0, 1fr))` acima de `1080px`, `2` colunas em tablet, `1` em mobile) e removendo `.btn-circular-recriar`.
   - Cobertura ampliada em `testes/integration/api/rotas/test_painel_frontend.py` (199 linhas) validando ausência de `grid-agenda-4`, `btn-circular-recriar` e `text: "o"`, além de zero `innerHTML` em todos os assets JS/CSS.
   - Quality Gate: 8/8 arquivos `<= 199` linhas, zero `innerHTML`, `node --check OK`, `ruff check .` limpo, `mypy app/ testes/ --strict` limpo em 253 arquivos, `pytest testes/ -v` com `168 passed`.
+- **Fase 4 concluída em 2026-11-17 (`c82b93a`):**
+  - Criado componente compartilhado `frontend/js/componentes/estado_vazio.js` (29 linhas, DRY/SRP) reutilizado por `agenda_filtros.js` (51 linhas), `biblioteca.js` (163 linhas) e `rag.js` (193 linhas).
+  - Criado `frontend/js/componentes/custos_kpi.js` (87 linhas) com 4 cards de KPIs escaneáveis (*Gasto da Empresa*, *Conta Ativa*, *Saldo Disponível*, *Modo de Proteção*) + barra semântica (`progress-warn`/`progress-danger`) reutilizada também pela cota da Biblioteca.
+  - Criado `frontend/js/componentes/editor_json_config.js` (90 linhas) com fonte monoespaçada, botão *Formatar* e validação visual em tempo real (`JSON válido` / `JSON inválido`), integrado a `frontend/js/config_custos.js` (160 linhas).
+  - Reorganizada aba `Cultura (RAG)` (`frontend/js/rag.js`) em grid de 3 cards de ingestão + cards limpos de fontes indexadas; aprimorada `frontend/js/biblioteca.js` e `frontend/js/auth.js` (126 linhas, ícones `sun`/`moon`/`logout`); ampliada biblioteca `frontend/js/icones.js` (152 linhas).
+  - Estruturado `frontend/index.html` (194 linhas) + `frontend/css/paineis.css` (132 linhas) + ajustes responsivos em `styles.css` (117 linhas) e `agenda.css` (132 linhas) eliminando overflow horizontal em mobile (`390x844`) e desktop (`1366x900`) nos temas dark e light.
+  - Inspeção visual via `/chrome-control` (15 capturas em dark/light, desktop/mobile, estado vazio e erro JSON) com `0` overflows e `erros_runtime: []`; adicionada suíte `testes/integration/api/rotas/test_painel_secundarias.py` (89 linhas).
+  - Quality Gate: 100% dos arquivos `<= 199` linhas, zero `innerHTML`, `node --check OK`, `ruff check .` limpo, `mypy app/ testes/ --strict` limpo em 254 arquivos, `pytest testes/ -v` com `169 passed`.
