@@ -8,12 +8,12 @@ from app.aplicacao.ia.diretor_arte import DiretorArteService, sanitizar_prompt_v
 from app.aplicacao.ia.dtos import CompactadorMiniaturaPort, ConteudoGeradoDTO, CriarConteudoCmd
 from app.aplicacao.ia.dtos_visuais import SceneSpec
 from app.aplicacao.ia.geracao_visual import GeradorVisualHibrido
-from app.aplicacao.ia.json_ia import extrair_objeto_json
 from app.aplicacao.ia.servico_orcamento import ServicoOrcamentoUseCase, estimar_chamada
 from app.aplicacao.ia.servico_prompts_rag import ServicoPromptsRagUseCase
 from app.aplicacao.ia.visao_conteudo import (
     ResumoVisaoAnexadaDTO,
     analisar_fotos_anexadas,
+    gerar_copy_validada,
     montar_prompt_copywriter,
 )
 from app.dominio.entidades.ia_rag import ConfigIAConta
@@ -36,17 +36,12 @@ class CriarConteudoUseCase:
 
     def __init__(
         self,
-        config_repo: ConfigIARepositoryPort,
-        midia_repo: MidiaRepositoryPort,
-        post_repo: PostagemRepositoryPort,
-        cliente_ia: ClienteIAPort,
-        orcamento: ServicoOrcamentoUseCase,
-        prompts_rag: ServicoPromptsRagUseCase,
-        gerador_visual: GeradorVisualHibrido,
-        cota_midia: CotaMidia | None = None,
+        config_repo: ConfigIARepositoryPort, midia_repo: MidiaRepositoryPort,
+        post_repo: PostagemRepositoryPort, cliente_ia: ClienteIAPort,
+        orcamento: ServicoOrcamentoUseCase, prompts_rag: ServicoPromptsRagUseCase,
+        gerador_visual: GeradorVisualHibrido, cota_midia: CotaMidia | None = None,
         diretor_arte: DiretorArteService | None = None,
-        cliente_visao: ClienteVisaoPort | None = None,
-        storage: StorageMidiaPort | None = None,
+        cliente_visao: ClienteVisaoPort | None = None, storage: StorageMidiaPort | None = None,
         compactador: CompactadorMiniaturaPort | None = None,
         modelo_visao: str = "google/gemini-2.5-flash-lite",
     ) -> None:
@@ -89,10 +84,19 @@ class CriarConteudoUseCase:
                 exige_imagem_paga=True,
             )
 
-        if cmd.salvar_rascunho and cmd.tipo_midia == TipoMidia.CAROUSEL:
+        if cmd.salvar_rascunho:
             total_itens = len(bases) + (1 if usa_ia_visual else 0)
-            if total_itens > 0 and not 2 <= total_itens <= 10:
+            if (
+                cmd.tipo_midia == TipoMidia.CAROUSEL
+                and total_itens > 0
+                and not 2 <= total_itens <= 10
+            ):
                 raise ErroValidacaoDominio("Carrossel exige entre 2 e 10 mídias para rascunho.")
+            if cmd.tipo_midia != TipoMidia.CAROUSEL and total_itens > 1:
+                raise ErroValidacaoDominio(
+                    f"Formato {cmd.tipo_midia.value} aceita no máximo 1 mídia "
+                    "(selecione CAROUSEL para 2-10 mídias)."
+                )
         return usa_ia_visual, bases
 
     async def executar(self, cmd: CriarConteudoCmd) -> ConteudoGeradoDTO:
@@ -124,25 +128,19 @@ class CriarConteudoUseCase:
         decisao_txt = await self._orcamento.decidir_politica_chamada(
             cmd.empresa_id, modelo_txt, estimar_chamada(modelo_txt), exige_imagem_paga=False
         )
-        bruto_txt, usage_txt = await self._ia.gerar_texto(
-            system_prompt, user_prompt, decisao_txt.modelo_efetivo, formato_json=True
+        legenda, hashtags, roteiro, prompt_vis_ia, custo_txt, modelos_txt = (
+            await gerar_copy_validada(
+                self._ia, self._orcamento, cmd, system_prompt,
+                user_prompt, decisao_txt.modelo_efetivo,
+            )
         )
-        reg_txt = await self._orcamento.registrar_consumo(
-            cmd.empresa_id, cmd.conta_ig_id, usage_txt
-        )
-        estruturado = extrair_objeto_json(bruto_txt)
-
         eh_stories = cmd.tipo_midia == TipoMidia.STORIES
-        legenda = "" if eh_stories else str(estruturado.get("legenda") or "").strip()
-        hashtags = [str(h) for h in estruturado.get("hashtags") or [] if str(h).strip()]
-        roteiro = [str(s) for s in estruturado.get("roteiro_slides") or [] if str(s).strip()]
-
-        custo_total, modelos_usados = reg_txt.custo_usd, [reg_txt.modelo]
+        custo_total, modelos_usados = custo_txt, list(modelos_txt)
         if visao_res is not None:
             custo_total += visao_res.custo_usd
             modelos_usados.append(visao_res.modelo_usado)
         prompt_visual = sanitizar_prompt_visual(
-            str(estruturado.get("prompt_visual") or cmd.prompt_avancado or cmd.tema)
+            prompt_vis_ia or cmd.prompt_avancado or cmd.tema
         )
         scene_spec: SceneSpec | None = None
         if usa_ia_visual and self._diretor is not None:

@@ -5,14 +5,16 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any
 
 from app.aplicacao.ia.dtos import CompactadorMiniaturaPort, CriarConteudoCmd
 from app.aplicacao.ia.json_ia import extrair_objeto_json
 from app.aplicacao.ia.servico_orcamento import ServicoOrcamentoUseCase, estimar_chamada
 from app.dominio.entidades.midia import MidiaBiblioteca
 from app.dominio.entidades.tenant import ContaInstagram
-from app.dominio.excecoes import ErroValidacaoDominio
-from app.dominio.portas.ia_meta import ClienteVisaoPort
+from app.dominio.excecoes import ErroIntegracaoIA, ErroValidacaoDominio
+from app.dominio.objetos_valor.enums_conteudo import TipoMidia
+from app.dominio.portas.ia_meta import ClienteIAPort, ClienteVisaoPort
 from app.dominio.portas.midia_storage import StorageMidiaPort
 from app.dominio.portas.repositorios_conteudo import MidiaRepositoryPort
 
@@ -121,15 +123,71 @@ def montar_prompt_copywriter(
         f"Instrução extra de tom: {cmd.tom_extra or 'padrão da conta'}{bloco_serie}{bloco_visao}\n"
         f"Base de conhecimento:\n{rag_bloco}\n"
     )
+    regras_json = (
+        'Retorne JSON com chaves: "legenda" (string vazia ""), '
+        '"hashtags" (lista vazia []), "roteiro_slides" (lista de textos curtos para tela).'
+        if cmd.tipo_midia == TipoMidia.STORIES
+        else 'Retorne JSON válido com chaves OBRIGATÓRIAS: "legenda" (texto completo e '
+        'envolvente em PT-BR, NUNCA vazio), "hashtags" (3 a 6 strings), '
+        '"roteiro_slides" (lista de slides se CAROUSEL).'
+    )
     if ancoras_visuais is None:
-        return (
-            f"{base}"
-            'Retorne JSON com chaves: "legenda" (string vazia se STORIES), '
-            '"hashtags" (lista de strings), "roteiro_slides" (lista de strings).'
-        )
+        return f"{base}{regras_json}"
     return (
         f"{base}Memória visual da conta:\n{ancoras_visuais}\n"
-        'Retorne JSON com chaves: "legenda" (string vazia se STORIES), '
-        '"hashtags" (lista de strings), "prompt_visual" (string descritiva), '
-        '"roteiro_slides" (lista de strings).'
+        f'{regras_json} Inclua também "prompt_visual" (descrição fotográfica direta).'
     )
+
+
+def _extrair_campos_copy(
+    dados: dict[str, Any], tipo_midia: TipoMidia
+) -> tuple[str, list[str], list[str], str]:
+    eh_stories = tipo_midia == TipoMidia.STORIES
+    bruto_tags, bruto_rot = dados.get("hashtags"), dados.get("roteiro_slides")
+    hashtags = (
+        [str(h) for h in bruto_tags if str(h).strip()] if isinstance(bruto_tags, list) else []
+    )
+    roteiro = (
+        [str(s) for s in bruto_rot if str(s).strip()] if isinstance(bruto_rot, list) else []
+    )
+    chaves = ("legenda", "caption", "texto", "copy")
+    bruto_leg = next(
+        (str(dados.get(k) or "").strip() for k in chaves if str(dados.get(k) or "").strip()), ""
+    )
+    if not bruto_leg and not eh_stories and roteiro:
+        bruto_leg = "\n".join(roteiro)
+    legenda = "" if eh_stories else bruto_leg
+    return legenda, hashtags, roteiro, str(dados.get("prompt_visual") or "").strip()
+
+
+async def gerar_copy_validada(
+    cliente_ia: ClienteIAPort,
+    orcamento: ServicoOrcamentoUseCase,
+    cmd: CriarConteudoCmd,
+    system_prompt: str,
+    user_prompt: str,
+    modelo_efetivo: str,
+) -> tuple[str, list[str], list[str], str, Decimal, list[str]]:
+    """Executa Copywriter com 1 retry automático caso legenda venha vazia fora de STORIES."""
+    custo_txt, modelos, prompt_atual = Decimal("0"), [], user_prompt
+    for tentativa in range(2):
+        bruto, usage = await cliente_ia.gerar_texto(
+            system_prompt, prompt_atual, modelo_efetivo, formato_json=True
+        )
+        reg = await orcamento.registrar_consumo(cmd.empresa_id, cmd.conta_ig_id, usage)
+        custo_txt += reg.custo_usd
+        modelos.append(reg.modelo)
+        legenda, hashtags, roteiro, prompt_vis = _extrair_campos_copy(
+            extrair_objeto_json(bruto), cmd.tipo_midia
+        )
+        if cmd.tipo_midia == TipoMidia.STORIES or legenda:
+            return legenda, hashtags, roteiro, prompt_vis, custo_txt, modelos
+        if tentativa == 0:
+            await orcamento.decidir_politica_chamada(
+                cmd.empresa_id, modelo_efetivo, estimar_chamada(modelo_efetivo), False
+            )
+            prompt_atual = (
+                f"{user_prompt}\n\nATENÇÃO: na resposta anterior o campo 'legenda' veio vazio. "
+                f"Escreva uma legenda completa em PT-BR para {cmd.tipo_midia.value}."
+            )
+    raise ErroIntegracaoIA("A IA retornou legenda vazia. Tente informar um tema mais específico.")

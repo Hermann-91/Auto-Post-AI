@@ -50,18 +50,12 @@ class ServicoAgendamentoUseCase:
 
     def __init__(
         self,
-        conta_repo: ContaIGRepositoryPort,
-        midia_repo: MidiaRepositoryPort,
-        post_repo: PostagemRepositoryPort,
-        storage: StorageMidiaPort,
-        cripto: CriptografiaPort,
+        conta_repo: ContaIGRepositoryPort, midia_repo: MidiaRepositoryPort,
+        post_repo: PostagemRepositoryPort, storage: StorageMidiaPort, cripto: CriptografiaPort,
         fabrica_publicadores: FabricaPublicadoresPort,
-        lock_distribuido: LockPublicacaoPort | None = None,
-        lock_ttl_segundos: int = 300,
-        reagendar_cota_minutos: int = 60,
-        max_tentativas_publicacao: int = 3,
-        backoff_base_segundos: int = 60,
-        relogio: Callable[[], datetime] | None = None,
+        lock_distribuido: LockPublicacaoPort | None = None, lock_ttl_segundos: int = 300,
+        reagendar_cota_minutos: int = 60, max_tentativas_publicacao: int = 3,
+        backoff_base_segundos: int = 60, relogio: Callable[[], datetime] | None = None,
     ) -> None:
         self._conta_repo, self._midia_repo, self._post_repo = conta_repo, midia_repo, post_repo
         self._storage, self._cripto, self._fabrica = storage, cripto, fabrica_publicadores
@@ -92,7 +86,7 @@ class ServicoAgendamentoUseCase:
         await exigir_conta_ativa(self._conta_repo, cmd.empresa_id, cmd.conta_ig_id, True)
         post = await self.obter_postagem(cmd.empresa_id, cmd.conta_ig_id, cmd.postagem_id)
         if post.status in {
-            StatusPostagem.PUBLICADO, StatusPostagem.CANCELADO, StatusPostagem.FALHA
+            StatusPostagem.PUBLICADO, StatusPostagem.CANCELADO, StatusPostagem.FALHA,
         }:
             post.status, post.meta_container_id, post.tentativas_publicacao = (
                 StatusPostagem.RASCUNHO, None, 0
@@ -104,16 +98,21 @@ class ServicoAgendamentoUseCase:
         """Anexa ou substitui mídias da biblioteca em rascunho/postagem existente."""
         await exigir_conta_ativa(self._conta_repo, cmd.empresa_id, cmd.conta_ig_id)
         post = await self.obter_postagem(cmd.empresa_id, cmd.conta_ig_id, cmd.postagem_id)
-        chaves = await resolver_chaves_midias(
-            self._midia_repo,
-            CriarPostagemCmd(
-                empresa_id=cmd.empresa_id, conta_ig_id=cmd.conta_ig_id,
-                tipo_midia=post.tipo_midia, midia_ids=cmd.midia_ids,
-                midias_chaves=cmd.midias_chaves,
-            ),
-            exigir_midia=True,
+        cmd_midia = CriarPostagemCmd(
+            empresa_id=cmd.empresa_id, conta_ig_id=cmd.conta_ig_id,
+            tipo_midia=post.tipo_midia, midia_ids=cmd.midia_ids, midias_chaves=cmd.midias_chaves,
         )
+        chaves = await resolver_chaves_midias(self._midia_repo, cmd_midia, exigir_midia=True)
         post.definir_midias(chaves, agora=self._relogio())
+        return await self._post_repo.salvar(post)
+
+    async def atualizar_legenda(
+        self, empresa_id: UUID, conta_ig_id: UUID, postagem_id: UUID, legenda: str
+    ) -> Postagem:
+        """Atualiza manualmente a legenda de rascunho/postagem ainda não publicada."""
+        await exigir_conta_ativa(self._conta_repo, empresa_id, conta_ig_id)
+        post = await self.obter_postagem(empresa_id, conta_ig_id, postagem_id)
+        post.atualizar_legenda(legenda, agora=self._relogio())
         return await self._post_repo.salvar(post)
 
     async def cancelar_postagem(self, emp_id: UUID, conta_id: UUID, post_id: UUID) -> Postagem:

@@ -72,7 +72,7 @@ export function criarCardAgenda(post, contaId, midiaPorChave, recarregar) {
   const btnRecriarTxt = el("button", {
     type: "button",
     className: "btn-circular-recriar",
-    title: "Recriar texto/legenda com IA + Cultura RAG",
+    title: "Editar manualmente ou recriar legenda com IA",
     text: "o",
   });
   btnRecriarTxt.addEventListener("click", () =>
@@ -86,7 +86,7 @@ export function criarCardAgenda(post, contaId, midiaPorChave, recarregar) {
       el("span", { className: jaPostado ? "badge badge-ok" : "badge", text: jaPostado ? "✅ POSTADO" : post.status }),
     ]),
     semMidia ? el("span", { className: "badge badge-warn", text: "⏳ Aguardando mídia" }) : null,
-    el("p", { className: "agenda-legenda-clamp", text: post.legenda || "(Stories sem legenda)", title: post.legenda || "" }),
+    el("p", { className: "agenda-legenda-clamp", text: post.legenda || (post.tipo_midia === "STORIES" ? "(Stories sem legenda)" : "(Sem legenda)"), title: post.legenda || "" }),
     promptVisual ? el("p", { className: "agenda-prompt-mini", text: `🎨 ${promptVisual}`, title: promptVisual }) : null,
     agendadoTxt ? el("span", { className: "small muted", text: agendadoTxt }) : null,
     post.erro_detalhe ? el("span", { className: "small muted", text: `⚠ ${post.erro_detalhe}` }) : null,

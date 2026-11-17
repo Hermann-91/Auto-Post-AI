@@ -33,6 +33,7 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
         assert "abas-contas-dinamicas" in html.text and "estudio-unificado-root" in html.text
         assert "job-status-box" in html.text and "rag-painel-root" in html.text
         assert "templates_json" in html.text and "brand_bible_json" in html.text
+        assert "previa-unitaria-box" not in html.text
         assert "form-propor-plano" not in html.text and "form-criar-ia" not in html.text
         assert "https://challenges.cloudflare.com" in html.headers["content-security-policy"]
 

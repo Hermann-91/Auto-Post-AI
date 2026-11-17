@@ -84,6 +84,17 @@ class Postagem:
         self.validar_invariantes()
         self._tocar(agora)
 
+    def atualizar_legenda(self, nova_legenda: str, agora: datetime | None = None) -> None:
+        """Atualiza legenda manualmente antes da publicação respeitando regra de Stories."""
+        if self.status in {
+            StatusPostagem.PUBLICANDO, StatusPostagem.PUBLICADO, StatusPostagem.CANCELADO,
+        }:
+            raise ErroValidacaoDominio("Não é possível editar legenda no status atual da postagem.")
+        if self.tipo_midia == TipoMidia.STORIES and nova_legenda.strip():
+            raise ErroValidacaoDominio("Stories não aceita legenda textual na Meta API.")
+        self.legenda = nova_legenda.strip()
+        self._tocar(agora)
+
     def agendar(self, para: datetime, agora: datetime | None = None) -> None:
         """Agenda a postagem para execução futura no Worker."""
         self.validar_invariantes_midia()

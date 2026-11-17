@@ -2,10 +2,10 @@ import { acompanharJobIA, apiFetch, apiJson, executarJobIA } from "/painel/js/ap
 import { carregarBiblioteca } from "/painel/js/biblioteca.js";
 import { criarCardAgenda } from "/painel/js/componentes/card_agenda.js";
 import { criarEstudioUnificado } from "/painel/js/componentes/estudio_unificado.js";
-import { renderizarPreviaUnitaria, renderizarResumoSemanal } from "/painel/js/componentes/resumo_orcamento.js";
+import { renderizarResumoSemanal } from "/painel/js/componentes/resumo_orcamento.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
 
-let estudio = null, planoSelecionadoId = "", previaUnitaria = null, ultimaContaId = "", pollCtrl = null;
+let estudio = null, planoSelecionadoId = "", ultimaContaId = "", pollCtrl = null;
 
 function renderizarJobStatus(job) {
   const box = document.getElementById("job-status-box");
@@ -22,16 +22,6 @@ function renderizarJobStatus(job) {
       el("div", { className: "progress-fill", style: `width: ${job.percentual}%` }),
     ])
   );
-}
-
-function atualizarPrevia(contaId) {
-  renderizarPreviaUnitaria({
-    container: document.getElementById("previa-unitaria-box"),
-    previa: previaUnitaria,
-    contaId,
-    aoLimpar: () => { previaUnitaria = null; atualizarPrevia(contaId); },
-    aoConcluir: async () => { previaUnitaria = null; estudio?.limparMidias(); await carregarPlanejamentoEPosts(contaId); },
-  });
 }
 
 async function executarPlanoComJob(contaId, plano, itensEditados, btn) {
@@ -64,7 +54,7 @@ export async function carregarPlanejamentoEPosts(contaId) {
   if (ultimaContaId && ultimaContaId !== contaId) {
     pollCtrl?.abort();
     pollCtrl = new AbortController();
-    planoSelecionadoId = ""; previaUnitaria = null;
+    planoSelecionadoId = "";
     renderizarJobStatus(null);
     estudio?.limparMidias();
   }
@@ -83,7 +73,6 @@ export async function carregarPlanejamentoEPosts(contaId) {
     aoExecutarPlano: (p, itens, btn) => executarPlanoComJob(contaId, p, itens, btn),
     aoAtualizar: async (id) => { planoSelecionadoId = id || ""; await carregarPlanejamentoEPosts(contaId); await carregarBiblioteca(contaId); },
   });
-  atualizarPrevia(contaId);
 
   const boxPosts = document.getElementById("lista-posts");
   if (boxPosts) {
@@ -148,8 +137,8 @@ export function inicializarPlanejamento(obterContaAtiva) {
             payload: { criar_conteudo: { conta_ig_id: contaId, tipo_midia: fmtUnico, tema: dados.tema || pilarTxt || "Conteúdo estratégico da marca", tom_extra: dados.tomExtra, gerar_imagem_ia: dados.modo === "IA_COMPLETA" && fmtUnico !== "REELS" && !editarAnexo, editar_midia_id: editarAnexo ? dados.midiaIds[0] : null, midia_base_ids: editarAnexo ? [] : dados.midiaIds, prompt_visual_extra: dados.promptExtraVisual, presets_melhoria: dados.presetsMelhoria, proporcao: fmtUnico === "STORIES" || fmtUnico === "REELS" ? "9:16" : "4:5", aplicar_logo: dados.aplicarLogo, salvar_rascunho: true, pilar_editorial: pilarTxt, modo_serie: dados.modoSerie, etapa_serie: dados.etapaSerie, prompt_avancado: dados.promptAvancado, agendar_para: dados.agendarPara ? new Date(dados.agendarPara).toISOString() : null } },
           });
           const res = job.resultado_json;
-          previaUnitaria = res ? { resultado: res, tipoMidia: fmtUnico, midiasBase: dados.midias } : null;
-          notificar(`Conteúdo salvo na Agenda ($${res?.custo_total_usd || "0"} USD)!`);
+          estudio?.limparMidias();
+          notificar(`Salvo direto na Agenda ($${res?.custo_total_usd || "0"} USD)!`);
         }
         renderizarJobStatus(null);
         await carregarPlanejamentoEPosts(contaId);

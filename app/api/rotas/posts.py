@@ -14,6 +14,7 @@ from app.api.dependencias.usuario_atual import obter_usuario_atual
 from app.api.schemas.postagens_meta import (
     AgendarPostagemRequest,
     AnexarMidiasPostagemRequest,
+    AtualizarLegendaPostagemRequest,
     CriarPostagemRequest,
     PostagemDetalheResponse,
     RecriarPostagemRequest,
@@ -78,20 +79,16 @@ async def listar_postagens_conta(
 
 @router.get("/{conta_ig_id}/{postagem_id}", response_model=PostagemDetalheResponse)
 async def obter_postagem(
-    conta_ig_id: UUID,
-    postagem_id: UUID,
+    conta_ig_id: UUID, postagem_id: UUID,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
 ) -> PostagemDetalheResponse:
-    post = await uc.obter_postagem(ctx.empresa_id, conta_ig_id, postagem_id)
-    return _to_post_detalhe(post)
+    return _to_post_detalhe(await uc.obter_postagem(ctx.empresa_id, conta_ig_id, postagem_id))
 
 
 @router.post("/{conta_ig_id}/{postagem_id}/agendar", response_model=PostagemDetalheResponse)
 async def agendar_postagem(
-    conta_ig_id: UUID,
-    postagem_id: UUID,
-    payload: AgendarPostagemRequest,
+    conta_ig_id: UUID, postagem_id: UUID, payload: AgendarPostagemRequest,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
 ) -> PostagemDetalheResponse:
@@ -106,8 +103,7 @@ async def agendar_postagem(
     response_model=ResultadoPublicacaoResponse,
 )
 async def publicar_postagem_agora(
-    conta_ig_id: UUID,
-    postagem_id: UUID,
+    conta_ig_id: UUID, postagem_id: UUID,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
 ) -> ResultadoPublicacaoResponse:
@@ -116,28 +112,22 @@ async def publicar_postagem_agora(
     )
     return ResultadoPublicacaoResponse(
         postagem=_to_post_detalhe(res.postagem),
-        publicada=res.publicada,
-        reagendada=res.reagendada,
-        motivo=res.motivo,
+        publicada=res.publicada, reagendada=res.reagendada, motivo=res.motivo,
     )
 
 
 @router.post("/{conta_ig_id}/{postagem_id}/cancelar", response_model=PostagemDetalheResponse)
 async def cancelar_postagem(
-    conta_ig_id: UUID,
-    postagem_id: UUID,
+    conta_ig_id: UUID, postagem_id: UUID,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
 ) -> PostagemDetalheResponse:
-    post = await uc.cancelar_postagem(ctx.empresa_id, conta_ig_id, postagem_id)
-    return _to_post_detalhe(post)
+    return _to_post_detalhe(await uc.cancelar_postagem(ctx.empresa_id, conta_ig_id, postagem_id))
 
 
 @router.post("/{conta_ig_id}/{postagem_id}/recriar", response_model=PostagemDetalheResponse)
 async def recriar_postagem_contexto(
-    conta_ig_id: UUID,
-    postagem_id: UUID,
-    payload: RecriarPostagemRequest,
+    conta_ig_id: UUID, postagem_id: UUID, payload: RecriarPostagemRequest,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[RecriarPostagemContextoUseCase, Depends(obter_recriar_post_uc)],
 ) -> PostagemDetalheResponse:
@@ -152,9 +142,7 @@ async def recriar_postagem_contexto(
 
 @router.patch("/{conta_ig_id}/{postagem_id}/midia", response_model=PostagemDetalheResponse)
 async def substituir_midia_postagem(
-    conta_ig_id: UUID,
-    postagem_id: UUID,
-    payload: SubstituirMidiaPostagemRequest,
+    conta_ig_id: UUID, postagem_id: UUID, payload: SubstituirMidiaPostagemRequest,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[RecriarPostagemContextoUseCase, Depends(obter_recriar_post_uc)],
 ) -> PostagemDetalheResponse:
@@ -167,19 +155,26 @@ async def substituir_midia_postagem(
 
 @router.patch("/{conta_ig_id}/{postagem_id}/midias", response_model=PostagemDetalheResponse)
 async def anexar_midias_postagem(
-    conta_ig_id: UUID,
-    postagem_id: UUID,
-    payload: AnexarMidiasPostagemRequest,
+    conta_ig_id: UUID, postagem_id: UUID, payload: AnexarMidiasPostagemRequest,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
 ) -> PostagemDetalheResponse:
     """Anexa ou substitui mídias (1..10) em rascunho só-texto ou postagem da conta."""
-    post = await uc.anexar_midias(
-        AnexarMidiasPostagemCmd(
-            empresa_id=ctx.empresa_id, conta_ig_id=conta_ig_id, postagem_id=postagem_id,
-            midia_ids=tuple(payload.midia_ids), midias_chaves=tuple(payload.midias_chaves),
-        )
-    )
+    post = await uc.anexar_midias(AnexarMidiasPostagemCmd(
+        empresa_id=ctx.empresa_id, conta_ig_id=conta_ig_id, postagem_id=postagem_id,
+        midia_ids=tuple(payload.midia_ids), midias_chaves=tuple(payload.midias_chaves),
+    ))
+    return _to_post_detalhe(post)
+
+
+@router.patch("/{conta_ig_id}/{postagem_id}/legenda", response_model=PostagemDetalheResponse)
+async def atualizar_legenda_postagem(
+    conta_ig_id: UUID, postagem_id: UUID, payload: AtualizarLegendaPostagemRequest,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
+) -> PostagemDetalheResponse:
+    """Salva edição manual da legenda ($0) no card da Agenda."""
+    post = await uc.atualizar_legenda(ctx.empresa_id, conta_ig_id, postagem_id, payload.legenda)
     return _to_post_detalhe(post)
 
 

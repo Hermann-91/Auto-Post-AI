@@ -49,7 +49,7 @@ async function carregarCulturaRag(boxRag, contaId) {
 
 export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, promptAtual, aoConcluir }) {
   const ehImagem = alvo === "imagem";
-  const { card, fechar } = criarBaseModal(ehImagem ? "✨ Recriar / Melhorar Imagem (IA + RAG)" : "✍️ Recriar Legenda (IA + RAG)");
+  const { card, fechar } = criarBaseModal(ehImagem ? "✨ Recriar / Melhorar Imagem (IA + RAG)" : "✍️ Editar ou Recriar Legenda");
 
   if (ehImagem) {
     const url = midiaAtual ? `/biblioteca/${contaId}/midias/${midiaAtual.id}/conteudo` : "";
@@ -61,9 +61,28 @@ export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, pro
     card.appendChild(preview);
     if (promptAtual) card.appendChild(el("p", { className: "small muted", text: `🎨 Prompt atual: ${promptAtual}` }));
   } else {
+    const editavel = !["PUBLICANDO", "PUBLICADO", "CANCELADO"].includes(post.status);
+    const txtManual = el("textarea", { rows: "4", placeholder: post.tipo_midia === "STORIES" ? "Stories não aceita legenda na Meta." : "Edite a legenda manualmente..." });
+    txtManual.value = post.legenda || "";
+    if (!editavel || post.tipo_midia === "STORIES") txtManual.setAttribute("disabled", "disabled");
+    const btnSalvarManual = el("button", { type: "button", className: "btn-outline btn-sm", text: "💾 Salvar Texto Manual ($0)" });
+    if (!editavel || post.tipo_midia === "STORIES") btnSalvarManual.setAttribute("disabled", "disabled");
+    btnSalvarManual.addEventListener("click", async () => {
+      btnSalvarManual.setAttribute("disabled", "disabled");
+      try {
+        await apiJson(`/posts/${contaId}/${post.id}/legenda`, "PATCH", { legenda: txtManual.value.trim() });
+        notificar("Legenda salva manualmente ($0)!");
+        fechar();
+        await aoConcluir();
+      } catch (err) {
+        notificar(err.message, "erro");
+        btnSalvarManual.removeAttribute("disabled");
+      }
+    });
     card.appendChild(el("div", { className: "post-texto-box" }, [
-      el("span", { className: "small muted", text: "Texto atual da postagem:" }),
-      el("p", { className: "post-legenda-txt", text: post.legenda || "(Sem legenda)" }),
+      el("span", { className: "small muted", text: "Edição manual da legenda ($0):" }),
+      txtManual,
+      btnSalvarManual,
     ]));
   }
 

@@ -82,6 +82,11 @@ async def test_fluxo_http_posts_agendamento_publicacao_e_isolamento(tmp_path: Pa
         assert criada.status_code == 201 and criada.json()["status"] == "RASCUNHO"
         post_id = criada.json()["id"]
 
+        ed = await cli_a.patch(
+            f"/posts/{conta_a.id}/{post_id}/legenda", json={"legenda": "Legenda editada $0"}
+        )
+        assert ed.status_code == 200 and ed.json()["legenda"] == "Legenda editada $0"
+
         ag = await cli_a.post(
             f"/posts/{conta_a.id}/{post_id}/agendar",
             json={"agendado_para": (datetime.now(UTC) + timedelta(hours=1)).isoformat()},
@@ -94,6 +99,9 @@ async def test_fluxo_http_posts_agendamento_publicacao_e_isolamento(tmp_path: Pa
         assert pub.json()["postagem"]["meta_media_id"] == "ig_media_http_1"
 
         assert (await cli_a.post(f"/posts/{conta_a.id}/{post_id}/cancelar")).status_code == 422
+        assert (await cli_a.patch(
+            f"/posts/{conta_a.id}/{post_id}/legenda", json={"legenda": "Bloqueado"}
+        )).status_code == 422
 
         rascunho2 = await cli_a.post(
             "/posts",

@@ -67,6 +67,12 @@ class AnexarMidiasPostagemRequest(BaseModel):
     midias_chaves: list[str] = Field(default_factory=list, max_length=10)
 
 
+class AtualizarLegendaPostagemRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    legenda: str = Field(default="", max_length=2200)
+
+
 class PostagemDetalheResponse(BaseModel):
     id: UUID
     conta_ig_id: UUID

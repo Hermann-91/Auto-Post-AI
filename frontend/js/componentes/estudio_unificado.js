@@ -63,6 +63,7 @@ export function criarEstudioUnificado({ raiz, obterContaAtiva, aoSubmeter }) {
     boxAgendaLote.classList.toggle("hidden", !ehLote);
     boxAgendaUnit.classList.toggle("hidden", ehLote);
     inpEtapaSerie.classList.toggle("hidden", !estado.modoSerie);
+    chkAutoAgendar.closest("label")?.classList.toggle("hidden", !ehLote);
     inpTema.placeholder = estado.modo === "MANUAL_ZERO"
       ? "Legenda manual (vazio para Stories)..."
       : "Tema opcional (Zero-Prompt: ou escolha um Pilar acima)...";
@@ -163,6 +164,10 @@ export function criarEstudioUnificado({ raiz, obterContaAtiva, aoSubmeter }) {
     const total = totalItens();
     if (total < 1 || total > 14) return notificar("Defina entre 1 e 14 publicações.", "erro");
     const sel = estado.seletor.obterEstado();
+    const fmtUnico = Object.entries(estado.quantidades).find(([, q]) => q > 0)?.[0] || "IMAGE";
+    if (total === 1 && fmtUnico !== "CAROUSEL" && sel.midiaIdsSelecionadas.length > 1) {
+      return notificar(`Você marcou ${sel.midiaIdsSelecionadas.length} mídias para 1 post ${fmtUnico}. Múltiplas imagens exigem Carrossel (2–10 mídias) ou aumente a quantidade de posts.`, "erro");
+    }
     aoSubmeter({
       modo: estado.modo, quantidades: { ...estado.quantidades }, total,
       pilares: [...estado.pilares], modoSerie: estado.modoSerie,
