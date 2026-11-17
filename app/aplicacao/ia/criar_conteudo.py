@@ -5,19 +5,25 @@ from __future__ import annotations
 from typing import Any
 
 from app.aplicacao.ia.diretor_arte import DiretorArteService, sanitizar_prompt_visual
-from app.aplicacao.ia.dtos import ConteudoGeradoDTO, CriarConteudoCmd
+from app.aplicacao.ia.dtos import CompactadorMiniaturaPort, ConteudoGeradoDTO, CriarConteudoCmd
 from app.aplicacao.ia.dtos_visuais import SceneSpec
 from app.aplicacao.ia.geracao_visual import GeradorVisualHibrido
 from app.aplicacao.ia.json_ia import extrair_objeto_json
 from app.aplicacao.ia.servico_orcamento import ServicoOrcamentoUseCase, estimar_chamada
 from app.aplicacao.ia.servico_prompts_rag import ServicoPromptsRagUseCase
+from app.aplicacao.ia.visao_conteudo import (
+    ResumoVisaoAnexadaDTO,
+    analisar_fotos_anexadas,
+    montar_prompt_copywriter,
+)
 from app.dominio.entidades.ia_rag import ConfigIAConta
 from app.dominio.entidades.midia import MidiaBiblioteca
 from app.dominio.entidades.publicacao import Postagem
 from app.dominio.excecoes import ErroValidacaoDominio
 from app.dominio.objetos_valor.cota_midia import CotaMidia
 from app.dominio.objetos_valor.enums_conteudo import StatusPostagem, TipoMidia
-from app.dominio.portas.ia_meta import ClienteIAPort
+from app.dominio.portas.ia_meta import ClienteIAPort, ClienteVisaoPort
+from app.dominio.portas.midia_storage import StorageMidiaPort
 from app.dominio.portas.repositorios_conteudo import (
     ConfigIARepositoryPort,
     MidiaRepositoryPort,
@@ -39,12 +45,18 @@ class CriarConteudoUseCase:
         gerador_visual: GeradorVisualHibrido,
         cota_midia: CotaMidia | None = None,
         diretor_arte: DiretorArteService | None = None,
+        cliente_visao: ClienteVisaoPort | None = None,
+        storage: StorageMidiaPort | None = None,
+        compactador: CompactadorMiniaturaPort | None = None,
+        modelo_visao: str = "google/gemini-2.5-flash-lite",
     ) -> None:
         self._config_repo, self._midia_repo, self._post_repo = config_repo, midia_repo, post_repo
         self._ia, self._orcamento, self._prompts_rag = cliente_ia, orcamento, prompts_rag
         self._visual = gerador_visual
         self._cota = cota_midia or CotaMidia()
         self._diretor = diretor_arte
+        self._visao, self._storage, self._compactar = cliente_visao, storage, compactador
+        self._modelo_visao = modelo_visao
 
     async def _validar_pre_condicoes(
         self,
@@ -79,40 +91,9 @@ class CriarConteudoUseCase:
 
         if cmd.salvar_rascunho and cmd.tipo_midia == TipoMidia.CAROUSEL:
             total_itens = len(bases) + (1 if usa_ia_visual else 0)
-            if not 2 <= total_itens <= 10:
+            if total_itens > 0 and not 2 <= total_itens <= 10:
                 raise ErroValidacaoDominio("Carrossel exige entre 2 e 10 mídias para rascunho.")
         return usa_ia_visual, bases
-
-    def _montar_prompt_copywriter(
-        self, cmd: CriarConteudoCmd, rag_bloco: str, todas_midias: list[MidiaBiblioteca]
-    ) -> str:
-        bloco_pilar = f" | Pilar: {cmd.pilar_editorial}" if cmd.pilar_editorial.strip() else ""
-        bloco_serie = (
-            f"\nSérie narrativa ativa (etapa: {cmd.etapa_serie or 'sequencial'})."
-            if cmd.modo_serie
-            else ""
-        )
-        base = (
-            f"Formato: {cmd.tipo_midia.value} | Tema: {cmd.tema} | "
-            f"Objetivo: {cmd.objetivo}{bloco_pilar}\n"
-            f"Instrução extra de tom: {cmd.tom_extra or 'padrão da conta'}{bloco_serie}\n"
-            f"Base de conhecimento:\n{rag_bloco}\n"
-        )
-        if self._diretor is not None:
-            return (
-                f"{base}"
-                'Retorne JSON com chaves: "legenda" (string vazia se STORIES), '
-                '"hashtags" (lista de strings), "roteiro_slides" (lista de strings).'
-            )
-        ancoras = self._prompts_rag.formatar_ancoras_visuais(
-            todas_midias, modo_serie=cmd.modo_serie
-        )
-        return (
-            f"{base}Memória visual da conta:\n{ancoras}\n"
-            'Retorne JSON com chaves: "legenda" (string vazia se STORIES), '
-            '"hashtags" (lista de strings), "prompt_visual" (string descritiva), '
-            '"roteiro_slides" (lista de strings).'
-        )
 
     async def executar(self, cmd: CriarConteudoCmd) -> ConteudoGeradoDTO:
         """Gera legenda/roteiro, imagem IA opcional com pós-processamento e rascunho."""
@@ -120,13 +101,24 @@ class CriarConteudoUseCase:
         config = await self._config_repo.obter_ou_padrao(cmd.empresa_id, cmd.conta_ig_id)
         usa_ia_visual, bases = await self._validar_pre_condicoes(cmd, config)
 
+        visao_res: ResumoVisaoAnexadaDTO | None = None
+        if bases and not usa_ia_visual and self._visao and self._storage and self._compactar:
+            visao_res = await analisar_fotos_anexadas(
+                conta, bases, self._visao, self._storage, self._compactar,
+                self._orcamento, self._midia_repo, self._modelo_visao,
+            )
         chunks = await self._prompts_rag.recuperar_contexto(
             cmd.empresa_id, cmd.conta_ig_id, f"{cmd.tema} {cmd.objetivo}"
         )
         todas_midias = await self._midia_repo.listar_por_conta(cmd.empresa_id, cmd.conta_ig_id)
         rag_bloco = "\n".join(chunks) if chunks else "Sem documentos RAG adicionais."
         system_prompt = self._prompts_rag.montar_system_prompt(conta, config)
-        user_prompt = self._montar_prompt_copywriter(cmd, rag_bloco, todas_midias)
+        ancoras = (
+            None
+            if self._diretor is not None
+            else self._prompts_rag.formatar_ancoras_visuais(todas_midias, modo_serie=cmd.modo_serie)
+        )
+        user_prompt = montar_prompt_copywriter(cmd, rag_bloco, ancoras, visao_res)
 
         modelo_txt = (cmd.modelo_texto or config.modelo_texto_pref).strip()
         decisao_txt = await self._orcamento.decidir_politica_chamada(
@@ -146,6 +138,9 @@ class CriarConteudoUseCase:
         roteiro = [str(s) for s in estruturado.get("roteiro_slides") or [] if str(s).strip()]
 
         custo_total, modelos_usados = reg_txt.custo_usd, [reg_txt.modelo]
+        if visao_res is not None:
+            custo_total += visao_res.custo_usd
+            modelos_usados.append(visao_res.modelo_usado)
         prompt_visual = sanitizar_prompt_visual(
             str(estruturado.get("prompt_visual") or cmd.prompt_avancado or cmd.tema)
         )
@@ -178,16 +173,19 @@ class CriarConteudoUseCase:
             tentativas_img = res_vis.qualidade_revisao.tentativas_geracao
 
         postagem: Postagem | None = None
-        if cmd.salvar_rascunho and chaves_post:
+        if cmd.salvar_rascunho:
             legenda_post = (
                 "" if eh_stories
                 else (f"{legenda}\n\n{' '.join(hashtags)}".strip() if hashtags else legenda)
             )
-            postagem = await self._post_repo.salvar(Postagem(
+            entidade = Postagem(
                 empresa_id=cmd.empresa_id, conta_ig_id=cmd.conta_ig_id,
                 tipo_midia=cmd.tipo_midia, midias_chaves=chaves_post, legenda=legenda_post,
                 status=StatusPostagem.RASCUNHO, planejamento_id=cmd.planejamento_id,
-            ))
+            )
+            if cmd.agendar_para is not None and chaves_post:
+                entidade.agendar(cmd.agendar_para)
+            postagem = await self._post_repo.salvar(entidade)
 
         return ConteudoGeradoDTO(
             legenda=legenda, hashtags=hashtags, prompt_visual=prompt_visual,
@@ -196,4 +194,5 @@ class CriarConteudoUseCase:
             modo_economico_ativado=decisao_txt.modo_economico_ativado,
             qualidade_revisao=qualidade_revisao, revisoes_visuais=revisoes_visuais,
             tentativas_geracao_imagem=tentativas_img,
+            horario_sugerido=visao_res.horario_sugerido if visao_res else "",
         )

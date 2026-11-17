@@ -61,7 +61,7 @@ class EdicaoOrcamentoSemanalUseCase:
                 break
             item = plano.itens_grade[idx]
             resumo_foto = midia.resumo_visual.strip() or "Foto anexada da conta"
-            if usar_edicao_ia:
+            if usar_edicao_ia and str(item.get("formato") or "IMAGE").upper() != "REELS":
                 item["editar_midia_id"] = str(midia.id)
                 item["midia_base_ids"] = []
                 item["usar_ia_imagem"] = True
@@ -114,8 +114,11 @@ class EdicaoOrcamentoSemanalUseCase:
         novos_itens: list[dict[str, Any]] = []
         for idx, bruto in enumerate(itens_editados, start=1):
             formato = normalizar_formato_midia(bruto.get("formato"))
-            editar_id = bruto.get("editar_midia_id")
-            usar_ia = bool(bruto.get("usar_ia_imagem", False)) or bool(editar_id)
+            editar_id = None if formato.value == "REELS" else bruto.get("editar_midia_id")
+            usar_ia = (
+                formato.value != "REELS"
+                and (bool(bruto.get("usar_ia_imagem", False)) or bool(editar_id))
+            )
             novos_itens.append(
                 {
                     "ordem": idx,

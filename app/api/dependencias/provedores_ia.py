@@ -84,6 +84,10 @@ def obter_criar_conteudo_uc(
         c.config_ia_repo, c.midia_repo, c.post_repo, c.cliente_ia,
         orcamento, prompts_rag, _criar_gerador_visual(c, orcamento), cota,
         diretor_arte=DiretorArteService(c.cliente_ia, orcamento),
+        cliente_visao=c.cliente_visao,
+        storage=c.storage,
+        compactador=ProcessadorImagem.compactar_entrada,
+        modelo_visao=c.config.openrouter_modelo_visao_padrao,
     )
 
 

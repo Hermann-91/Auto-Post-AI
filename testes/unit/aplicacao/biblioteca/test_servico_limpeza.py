@@ -64,6 +64,10 @@ class _MemPostRepo:
     async def listar_agendadas_pendentes(self, ate_momento: datetime) -> list[Postagem]:
         return []
 
+    async def listar_publicando_travadas(self, atualizado_ate: datetime) -> list[Postagem]:
+        _ = atualizado_ate
+        return []
+
     async def remover(
         self, empresa_id: UUID, conta_ig_id: UUID, postagem_id: UUID
     ) -> bool:

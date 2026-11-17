@@ -36,12 +36,15 @@ class ErroHttpMeta(ErroIntegracaoMeta):
     """Erro HTTP 4xx/5xx retornado pela Meta Graph API."""
 
     def __init__(self, status_code: int, mensagem: str) -> None:
-        super().__init__(mensagem)
+        super().__init__(mensagem, transitorio=(status_code >= 500 or status_code == 429))
         self.status_code = status_code
 
 
 class ErroTransitorioMeta(ErroIntegracaoMeta):
     """Erro de timeout ou rede durante requisição Meta."""
+
+    def __init__(self, mensagem: str = "") -> None:
+        super().__init__(mensagem, transitorio=True)
 
 
 def extrair_erro_meta(resp: httpx.Response) -> str:

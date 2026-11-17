@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Body, Depends, status
 
 from app.api.dependencias.provedores_ia import (
     obter_edicao_orcamento_uc,
@@ -16,6 +16,7 @@ from app.api.rotas.criacao import to_postagem_resumo
 from app.api.schemas.criacao_ia import (
     AtualizarItensPlanoRequest,
     ExecucaoPlanejamentoResponse,
+    ExecutarPlanejamentoRequest,
     PlanejamentoResponse,
     ProporPlanejamentoRequest,
 )
@@ -65,6 +66,9 @@ async def propor_planejamento(
             midia_ids_anexadas=tuple(payload.midia_ids_anexadas),
             presets_melhoria=tuple(payload.presets_melhoria),
             instrucao_melhoria=payload.instrucao_melhoria,
+            composicao_formatos=payload.composicao_formatos,
+            auto_agendar=payload.auto_agendar,
+            fuso_horario=payload.fuso_horario,
         )
     )
     if payload.midia_ids_anexadas:
@@ -133,9 +137,14 @@ async def executar_planejamento(
     plano_id: UUID,
     ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
     uc: Annotated[PlanejamentoSemanalUseCase, Depends(obter_planejamento_uc)],
+    payload: Annotated[ExecutarPlanejamentoRequest | None, Body()] = None,
 ) -> ExecucaoPlanejamentoResponse:
     """Etapa 2b: executa os itens aprovados gerando mídias em IA-Cria e rascunhos."""
-    res = await uc.executar_plano(ctx.empresa_id, conta_ig_id, plano_id)
+    res = await uc.executar_plano(
+        ctx.empresa_id, conta_ig_id, plano_id,
+        auto_agendar=payload.auto_agendar if payload else None,
+        fuso_horario=payload.fuso_horario if payload else None,
+    )
     return ExecucaoPlanejamentoResponse(
         plano=_to_plano_response(res.plano),
         postagens_criadas=[to_postagem_resumo(p) for p in res.postagens_criadas],

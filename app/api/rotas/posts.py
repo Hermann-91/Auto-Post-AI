@@ -13,6 +13,7 @@ from app.api.dependencias.provedores_meta import obter_agendamento_uc
 from app.api.dependencias.usuario_atual import obter_usuario_atual
 from app.api.schemas.postagens_meta import (
     AgendarPostagemRequest,
+    AnexarMidiasPostagemRequest,
     CriarPostagemRequest,
     PostagemDetalheResponse,
     RecriarPostagemRequest,
@@ -24,6 +25,7 @@ from app.aplicacao.biblioteca import ServicoExclusaoMidiaPostUseCase
 from app.aplicacao.ia import RecriarPostagemContextoUseCase
 from app.aplicacao.publicacao import (
     AgendarPostagemCmd,
+    AnexarMidiasPostagemCmd,
     CriarPostagemCmd,
     ServicoAgendamentoUseCase,
 )
@@ -36,18 +38,12 @@ router = APIRouter(prefix="/posts", tags=["postagens"])
 
 def _to_post_detalhe(post: Postagem) -> PostagemDetalheResponse:
     return PostagemDetalheResponse(
-        id=post.id,
-        conta_ig_id=post.conta_ig_id,
-        tipo_midia=post.tipo_midia,
-        midias_chaves=post.midias_chaves,
-        legenda=post.legenda,
-        status=post.status,
-        planejamento_id=post.planejamento_id,
-        agendado_para=post.agendado_para,
-        meta_container_id=post.meta_container_id,
-        meta_media_id=post.meta_media_id,
-        erro_detalhe=post.erro_detalhe,
-        criado_em=post.criado_em,
+        id=post.id, conta_ig_id=post.conta_ig_id, tipo_midia=post.tipo_midia,
+        midias_chaves=post.midias_chaves, legenda=post.legenda, status=post.status,
+        planejamento_id=post.planejamento_id, agendado_para=post.agendado_para,
+        meta_container_id=post.meta_container_id, meta_media_id=post.meta_media_id,
+        erro_detalhe=post.erro_detalhe, criado_em=post.criado_em,
+        tentativas_publicacao=post.tentativas_publicacao, atualizado_em=post.atualizado_em,
     )
 
 
@@ -60,14 +56,10 @@ async def criar_postagem(
     """Cria rascunho ou postagem já agendada com mídias da conta."""
     post = await uc.criar_postagem(
         CriarPostagemCmd(
-            empresa_id=ctx.empresa_id,
-            conta_ig_id=payload.conta_ig_id,
-            tipo_midia=payload.tipo_midia,
-            midia_ids=tuple(payload.midia_ids),
-            midias_chaves=tuple(payload.midias_chaves),
-            legenda=payload.legenda,
-            agendado_para=payload.agendado_para,
-            planejamento_id=payload.planejamento_id,
+            empresa_id=ctx.empresa_id, conta_ig_id=payload.conta_ig_id,
+            tipo_midia=payload.tipo_midia, midia_ids=tuple(payload.midia_ids),
+            midias_chaves=tuple(payload.midias_chaves), legenda=payload.legenda,
+            agendado_para=payload.agendado_para, planejamento_id=payload.planejamento_id,
         )
     )
     return _to_post_detalhe(post)
@@ -104,12 +96,7 @@ async def agendar_postagem(
     uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
 ) -> PostagemDetalheResponse:
     post = await uc.agendar_postagem(
-        AgendarPostagemCmd(
-            empresa_id=ctx.empresa_id,
-            conta_ig_id=conta_ig_id,
-            postagem_id=postagem_id,
-            agendado_para=payload.agendado_para,
-        )
+        AgendarPostagemCmd(ctx.empresa_id, conta_ig_id, postagem_id, payload.agendado_para)
     )
     return _to_post_detalhe(post)
 
@@ -156,13 +143,9 @@ async def recriar_postagem_contexto(
 ) -> PostagemDetalheResponse:
     """Recria imagem ou legenda do card da Agenda somando contexto adicional + Cultura RAG."""
     post = await uc.recriar_com_contexto(
-        empresa_id=ctx.empresa_id,
-        conta_ig_id=conta_ig_id,
-        postagem_id=postagem_id,
-        alvo=payload.alvo,
-        contexto_adicional=payload.contexto_adicional,
-        presets_melhoria=tuple(payload.presets_melhoria),
-        midia_base_id=payload.midia_base_id,
+        empresa_id=ctx.empresa_id, conta_ig_id=conta_ig_id, postagem_id=postagem_id,
+        alvo=payload.alvo, contexto_adicional=payload.contexto_adicional,
+        presets_melhoria=tuple(payload.presets_melhoria), midia_base_id=payload.midia_base_id,
     )
     return _to_post_detalhe(post)
 
@@ -178,6 +161,24 @@ async def substituir_midia_postagem(
     """Substitui a foto do card da Agenda por uma foto externa da Biblioteca ou PC/Mobile."""
     post = await uc.substituir_midia_externa(
         ctx.empresa_id, conta_ig_id, postagem_id, payload.nova_midia_id
+    )
+    return _to_post_detalhe(post)
+
+
+@router.patch("/{conta_ig_id}/{postagem_id}/midias", response_model=PostagemDetalheResponse)
+async def anexar_midias_postagem(
+    conta_ig_id: UUID,
+    postagem_id: UUID,
+    payload: AnexarMidiasPostagemRequest,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    uc: Annotated[ServicoAgendamentoUseCase, Depends(obter_agendamento_uc)],
+) -> PostagemDetalheResponse:
+    """Anexa ou substitui mídias (1..10) em rascunho só-texto ou postagem da conta."""
+    post = await uc.anexar_midias(
+        AnexarMidiasPostagemCmd(
+            empresa_id=ctx.empresa_id, conta_ig_id=conta_ig_id, postagem_id=postagem_id,
+            midia_ids=tuple(payload.midia_ids), midias_chaves=tuple(payload.midias_chaves),
+        )
     )
     return _to_post_detalhe(post)
 

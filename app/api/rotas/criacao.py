@@ -12,6 +12,8 @@ from app.api.dependencias.usuario_atual import obter_usuario_atual
 from app.api.schemas.criacao_ia import (
     CriarConteudoRequest,
     CriarConteudoResponse,
+    CuradoriaLoteRequest,
+    CuradoriaLoteResponse,
     CuradoriaVisualResponse,
     MidiaResumoResponse,
     PostagemResumoResponse,
@@ -37,6 +39,7 @@ def to_postagem_resumo(post: Postagem) -> PostagemResumoResponse:
         legenda=post.legenda,
         status=post.status,
         planejamento_id=post.planejamento_id,
+        agendado_para=post.agendado_para,
     )
 
 
@@ -69,6 +72,7 @@ async def criar_conteudo(
             modo_serie=payload.modo_serie,
             etapa_serie=payload.etapa_serie,
             prompt_avancado=payload.prompt_avancado,
+            agendar_para=payload.agendar_para,
         )
     )
     return CriarConteudoResponse(
@@ -95,6 +99,30 @@ async def criar_conteudo(
         qualidade_revisao=res.qualidade_revisao,
         revisoes_visuais=res.revisoes_visuais,
         tentativas_geracao_imagem=res.tentativas_geracao_imagem,
+        horario_sugerido=res.horario_sugerido,
+    )
+
+
+@router.post("/curadoria/{conta_ig_id}/eleger-melhor", response_model=CuradoriaLoteResponse)
+async def eleger_melhor_foto(
+    conta_ig_id: UUID,
+    payload: CuradoriaLoteRequest,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    uc: Annotated[ServicoCuradoriaVisualUseCase, Depends(obter_curadoria_uc)],
+) -> CuradoriaLoteResponse:
+    """Compara até 5 imagens da conta via visão e elege a mais forte."""
+    res = await uc.eleger_melhor_foto(
+        ctx.empresa_id, conta_ig_id, payload.midia_ids,
+        payload.objetivo_contexto, payload.modelo_visao,
+    )
+    return CuradoriaLoteResponse(
+        midia_vencedora_id=res.midia_vencedora.id,
+        chave_storage=res.midia_vencedora.chave_storage,
+        indice_vencedora=res.indice_vencedora,
+        justificativa=res.justificativa,
+        avaliacoes=res.avaliacoes,
+        custo_usd=res.custo_usd,
+        modelo_usado=res.modelo_usado,
     )
 
 

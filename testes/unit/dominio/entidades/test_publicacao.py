@@ -58,3 +58,27 @@ def test_ciclo_de_vida_postagem_e_planejamento() -> None:
     plano.iniciar_execucao()
     plano.concluir()
     assert plano.status == StatusPlanejamento.CONCLUIDO
+
+
+def test_rascunho_so_texto_invariantes_agendamento_e_retry() -> None:
+    eid, cid = uuid4(), uuid4()
+    rascunho = Postagem(
+        empresa_id=eid, conta_ig_id=cid,
+        tipo_midia=TipoMidia.CAROUSEL, midias_chaves=[], legenda="Roteiro carrossel",
+    )
+    assert rascunho.status == StatusPostagem.RASCUNHO
+
+    with pytest.raises(ErroValidacaoDominio):
+        rascunho.agendar(datetime.now(UTC) + timedelta(hours=1))
+    with pytest.raises(ErroValidacaoDominio):
+        rascunho.iniciar_publicacao()
+
+    rascunho.definir_midias(["1.jpg", "2.jpg"])
+    rascunho.agendar(datetime.now(UTC) + timedelta(hours=1))
+    rascunho.iniciar_publicacao()
+    rascunho.reagendar_por_falha_transitoria(
+        datetime.now(UTC) + timedelta(minutes=2), "Timeout Meta"
+    )
+    status_final: StatusPostagem = rascunho.status
+    assert status_final == StatusPostagem.AGENDADO
+    assert rascunho.tentativas_publicacao == 1

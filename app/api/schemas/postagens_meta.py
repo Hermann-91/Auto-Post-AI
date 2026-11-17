@@ -60,6 +60,13 @@ class SubstituirMidiaPostagemRequest(BaseModel):
     nova_midia_id: UUID
 
 
+class AnexarMidiasPostagemRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    midia_ids: list[UUID] = Field(default_factory=list, max_length=10)
+    midias_chaves: list[str] = Field(default_factory=list, max_length=10)
+
+
 class PostagemDetalheResponse(BaseModel):
     id: UUID
     conta_ig_id: UUID
@@ -73,6 +80,8 @@ class PostagemDetalheResponse(BaseModel):
     meta_media_id: str | None
     erro_detalhe: str | None
     criado_em: datetime
+    tentativas_publicacao: int = 0
+    atualizado_em: datetime | None = None
 
 
 class ResultadoPublicacaoResponse(BaseModel):

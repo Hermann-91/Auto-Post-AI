@@ -43,34 +43,25 @@ class ClienteOpenRouter:
 
     def __init__(
         self,
-        api_key: str,
-        base_url: str = "https://openrouter.ai/api/v1",
-        timeout_segundos: float = 60.0,
-        site_url: str | None = None,
+        api_key: str, base_url: str = "https://openrouter.ai/api/v1",
+        timeout_segundos: float = 60.0, site_url: str | None = None,
         app_title: str = "Robo-Auto-Inst",
         modelo_fallback_free: str = "openrouter/free",
-        fallback_automatico: bool = True,
-        http_client: httpx.AsyncClient | None = None,
+        fallback_automatico: bool = True, http_client: httpx.AsyncClient | None = None,
     ) -> None:
         if not api_key.strip():
             raise ErroValidacaoDominio("OPENROUTER_API_KEY não pode ser vazia.")
-        self._api_key = api_key.strip()
-        self._base_url = base_url.rstrip("/")
-        self._timeout = timeout_segundos
-        self._site_url = site_url
-        self._app_title = app_title
+        self._api_key, self._base_url = api_key.strip(), base_url.rstrip("/")
+        self._timeout, self._site_url, self._app_title = timeout_segundos, site_url, app_title
         self._modelo_fallback_free = modelo_fallback_free
-        self._fallback_automatico = fallback_automatico
-        self._http_client = http_client
+        self._fallback_automatico, self._http_client = fallback_automatico, http_client
 
     def _headers(self) -> dict[str, str]:
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json", "X-Title": self._app_title,
-        }
+        h = {"Authorization": f"Bearer {self._api_key}",
+             "Content-Type": "application/json", "X-Title": self._app_title}
         if self._site_url:
-            headers["HTTP-Referer"] = self._site_url
-        return headers
+            h["HTTP-Referer"] = self._site_url
+        return h
 
     async def _enviar_http(
         self, metodo: str, url: str,
@@ -118,37 +109,49 @@ class ClienteOpenRouter:
         try:
             return await self._requisitar("POST", "/chat/completions", payload)
         except _ErroHttpOpenRouter as exc:
-            pode_fallback = (
-                permitir_fallback_free
-                and self._fallback_automatico
-                and exc.status_code in _STATUS_FALLBACK
-                and not modelo_eh_gratuito(modelo)
+            pode = (
+                permitir_fallback_free and self._fallback_automatico
+                and exc.status_code in _STATUS_FALLBACK and not modelo_eh_gratuito(modelo)
             )
-            if not pode_fallback:
+            if not pode:
                 raise ErroIntegracaoIA(str(exc)) from exc
-            payload_fb = {**payload, "model": self._modelo_fallback_free}
             try:
-                return await self._requisitar("POST", "/chat/completions", payload_fb)
+                return await self._requisitar(
+                    "POST", "/chat/completions", {**payload, "model": self._modelo_fallback_free}
+                )
             except _ErroHttpOpenRouter as exc_fb:
                 raise ErroIntegracaoIA(str(exc_fb)) from exc_fb
+
+    async def _executar_chat_texto(
+        self, payload: dict[str, Any], modelo: str
+    ) -> tuple[str, dict[str, Any]]:
+        dados = await self._chat_com_fallback(payload, modelo, permitir_fallback_free=True)
+        return extrair_texto_mensagem(extrair_mensagem(dados)), extrair_usage(dados, modelo)
 
     async def gerar_texto(
         self, system_prompt: str, user_prompt: str, modelo: str, formato_json: bool = False
     ) -> tuple[str, dict[str, Any]]:
         """Gera texto ou JSON estruturado no OpenRouter com extração de usage.cost."""
-        payload = montar_payload_texto(system_prompt, user_prompt, modelo, formato_json)
-        dados = await self._chat_com_fallback(payload, modelo, permitir_fallback_free=True)
-        texto = extrair_texto_mensagem(extrair_mensagem(dados))
-        return texto, extrair_usage(dados, modelo)
+        return await self._executar_chat_texto(
+            montar_payload_texto(system_prompt, user_prompt, modelo, formato_json), modelo
+        )
 
     async def analisar_imagem(
         self, system_prompt: str, user_prompt: str, imagem_data_url: str, modelo: str
     ) -> tuple[str, dict[str, Any]]:
         """Executa curadoria visual multimodal com miniatura já compactada."""
-        payload = montar_payload_visao(system_prompt, user_prompt, imagem_data_url, modelo)
-        dados = await self._chat_com_fallback(payload, modelo, permitir_fallback_free=True)
-        texto = extrair_texto_mensagem(extrair_mensagem(dados))
-        return texto, extrair_usage(dados, modelo)
+        return await self._executar_chat_texto(
+            montar_payload_visao(system_prompt, user_prompt, imagem_data_url, modelo), modelo
+        )
+
+    async def analisar_multiplas_imagens(
+        self, system_prompt: str, user_prompt: str,
+        imagens_data_urls: Sequence[str], modelo: str,
+    ) -> tuple[str, dict[str, Any]]:
+        """Analisa múltiplas imagens na mesma chamada multimodal."""
+        return await self._executar_chat_texto(
+            montar_payload_visao(system_prompt, user_prompt, imagens_data_urls, modelo), modelo
+        )
 
     async def _executar_payload_imagem(
         self, payload: dict[str, Any], modelo: str
@@ -166,18 +169,15 @@ class ClienteOpenRouter:
         self, prompt: str, modelo: str, imagem_base_url: str | None = None
     ) -> tuple[bytes, dict[str, Any]]:
         """Gera ou edita imagem via Nano Banana (modalities=['image', 'text'])."""
-        return await self._executar_payload_imagem(
-            montar_payload_imagem(prompt, modelo, imagem_base_url), modelo
-        )
+        p = montar_payload_imagem(prompt, modelo, imagem_base_url)
+        return await self._executar_payload_imagem(p, modelo)
 
     async def gerar_imagem_com_referencias(
         self, prompt: str, modelo: str, imagens_base_urls: Sequence[str]
     ) -> tuple[bytes, dict[str, Any]]:
         """Gera ou edita imagem enviando múltiplas referências visuais ao Nano Banana."""
-        return await self._executar_payload_imagem(
-            montar_payload_imagem(prompt, modelo, imagens_referencia_urls=imagens_base_urls),
-            modelo,
-        )
+        p = montar_payload_imagem(prompt, modelo, imagens_referencia_urls=imagens_base_urls)
+        return await self._executar_payload_imagem(p, modelo)
 
     async def gerar_embeddings(
         self, textos: list[str], modelo: str
@@ -185,8 +185,8 @@ class ClienteOpenRouter:
         """Gera embeddings em lote no OpenRouter /embeddings com usage.cost."""
         if not textos:
             return [], extrair_usage({}, modelo)
-        payload = montar_payload_embeddings(textos, modelo)
-        dados = await self._requisitar("POST", "/embeddings", payload)
+        p = montar_payload_embeddings(textos, modelo)
+        dados = await self._requisitar("POST", "/embeddings", p)
         return extrair_embeddings(dados, len(textos)), extrair_usage(dados, modelo)
 
     async def consultar_geracao(self, gen_id: str) -> dict[str, Any]:

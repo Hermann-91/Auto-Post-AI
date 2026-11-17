@@ -28,7 +28,10 @@ from app.aplicacao.ia.edicao_orcamento_semanal import EdicaoOrcamentoSemanalUseC
 from app.aplicacao.ia.geracao_visual import GeradorVisualHibrido
 from app.aplicacao.ia.planejamento_semanal import PlanejamentoSemanalUseCase
 from app.aplicacao.ia.recriar_postagem_contexto import RecriarPostagemContextoUseCase
-from app.aplicacao.ia.servico_curadoria import ServicoCuradoriaVisualUseCase
+from app.aplicacao.ia.servico_curadoria import (
+    CuradoriaLoteDTO,
+    ServicoCuradoriaVisualUseCase,
+)
 from app.aplicacao.ia.servico_orcamento import ServicoOrcamentoUseCase
 from app.aplicacao.ia.servico_prompts_rag import ServicoPromptsRagUseCase
 
@@ -39,6 +42,7 @@ __all__ = [
     "ConteudoGeradoDTO",
     "CriarConteudoCmd",
     "CriarConteudoUseCase",
+    "CuradoriaLoteDTO",
     "CuradoriaVisualDTO",
     "DecisaoOrcamentoDTO",
     "DiretorArteService",

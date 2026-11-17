@@ -11,6 +11,7 @@ from app.aplicacao.publicacao.dtos import (
     ResultadoPublicacaoDTO,
     ResultadoRenovacaoTokensDTO,
 )
+from app.aplicacao.publicacao.resiliencia_publicacao import recuperar_postagem_travada
 from app.aplicacao.publicacao.servico_agendamento import (
     LockPublicacaoPort,
     ServicoAgendamentoUseCase,
@@ -38,6 +39,7 @@ class ExecutorLotesWorker:
         dias_antes_renovar: int = 10,
         concorrencia_max: int = 3,
         lock_ttl_segundos: int = 300,
+        max_tentativas_publicacao: int = 3,
     ) -> None:
         self._post_repo = post_repo
         self._conta_repo = conta_repo
@@ -47,6 +49,32 @@ class ExecutorLotesWorker:
         self._dias_antes = dias_antes_renovar
         self._concorrencia = max(1, concorrencia_max)
         self._lock_ttl = lock_ttl_segundos
+        self._max_tentativas = max(1, max_tentativas_publicacao)
+
+    async def _recuperar_postagens_travadas(self, referencia: datetime) -> int:
+        limite = referencia - timedelta(seconds=self._lock_ttl)
+        travadas = await self._post_repo.listar_publicando_travadas(limite)
+        recuperadas = 0
+        ttl_rec = min(30, max(1, self._lock_ttl))
+        for post in travadas:
+            chave = f"post:{post.id}"
+            token_lock = await self._lock.adquirir(chave, ttl_rec)
+            if token_lock is None:
+                continue
+            try:
+                if await recuperar_postagem_travada(
+                    self._post_repo,
+                    post.empresa_id,
+                    post.conta_ig_id,
+                    post.id,
+                    limite,
+                    referencia,
+                    self._max_tentativas,
+                ):
+                    recuperadas += 1
+            finally:
+                await self._lock.liberar(chave, token_lock)
+        return recuperadas
 
     async def executar_ciclo_publicacoes(
         self,
@@ -54,9 +82,10 @@ class ExecutorLotesWorker:
     ) -> ResultadoLoteWorkerDTO:
         """Processa todas as postagens AGENDADO vencidas com concorrência controlada."""
         referencia = agora or datetime.now(UTC)
+        recuperadas = await self._recuperar_postagens_travadas(referencia)
         pendentes = await self._post_repo.listar_agendadas_pendentes(referencia)
         if not pendentes:
-            return ResultadoLoteWorkerDTO()
+            return ResultadoLoteWorkerDTO(recuperadas_travadas=recuperadas)
 
         semaforo = asyncio.Semaphore(self._concorrencia)
 
@@ -81,6 +110,7 @@ class ExecutorLotesWorker:
             reagendadas=reagendadas,
             falhas=falhas,
             ignoradas_por_lock=ignoradas,
+            recuperadas_travadas=recuperadas,
         )
 
     async def _renovar_conta(self, conta: ContaInstagram) -> bool:

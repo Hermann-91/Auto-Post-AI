@@ -2,6 +2,7 @@
 
 from app.aplicacao.publicacao.dtos import (
     AgendarPostagemCmd,
+    AnexarMidiasPostagemCmd,
     ConectarMetaCallbackCmd,
     CriarPostagemCmd,
     ResultadoLoteWorkerDTO,
@@ -16,6 +17,7 @@ from app.aplicacao.publicacao.servico_oauth_meta import (
 
 __all__ = [
     "AgendarPostagemCmd",
+    "AnexarMidiasPostagemCmd",
     "ConectarMetaCallbackCmd",
     "CriarPostagemCmd",
     "ResultadoLoteWorkerDTO",

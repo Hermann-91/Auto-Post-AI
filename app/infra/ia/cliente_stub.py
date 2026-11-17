@@ -31,6 +31,16 @@ class ClienteIANaoConfigurado:
         _ = (system_prompt, user_prompt, imagem_data_url, modelo)
         raise ErroValidacaoDominio("OPENROUTER_API_KEY não configurada no servidor.")
 
+    async def analisar_multiplas_imagens(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        imagens_data_urls: Sequence[str],
+        modelo: str,
+    ) -> tuple[str, dict[str, Any]]:
+        _ = (system_prompt, user_prompt, imagens_data_urls, modelo)
+        raise ErroValidacaoDominio("OPENROUTER_API_KEY não configurada no servidor.")
+
     async def gerar_ou_editar_imagem(
         self,
         prompt: str,

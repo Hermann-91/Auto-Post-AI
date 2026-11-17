@@ -63,15 +63,20 @@ def estimar_plano_semanal(
     """Calcula estimativa total em USD da Etapa 2 antes da aprovação do usuário."""
     total = Decimal("0.0000")
     custo_txt = estimar_chamada(modelo_texto, eh_imagem=False)
+    custo_visao = estimar_chamada(modelo_visao or _MODELO_VISAO_PADRAO, eh_imagem=False)
     custo_img = (
         estimar_pipeline_visual(modelo_imagem, modelo_visao)
         if modelo_visao
         else estimar_chamada(modelo_imagem, eh_imagem=True)
     )
     for item in itens:
+        formato = str(item.get("formato") or "IMAGE").upper()
         total += custo_txt
-        if bool(item.get("usar_ia_imagem", False)):
+        usar_ia = bool(item.get("usar_ia_imagem", False)) and formato != "REELS"
+        if usar_ia:
             total += custo_img
+        elif item.get("midia_base_ids"):
+            total += custo_visao
     return total.quantize(Decimal("0.0001"))
 
 

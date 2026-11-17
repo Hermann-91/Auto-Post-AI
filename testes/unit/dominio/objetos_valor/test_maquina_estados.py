@@ -16,6 +16,8 @@ def test_transicoes_validas_e_invalidas_postagem() -> None:
     validar_transicao_postagem(StatusPostagem.RASCUNHO, StatusPostagem.AGENDADO)
     validar_transicao_postagem(StatusPostagem.AGENDADO, StatusPostagem.PUBLICANDO)
     validar_transicao_postagem(StatusPostagem.PUBLICANDO, StatusPostagem.PUBLICADO)
+    validar_transicao_postagem(StatusPostagem.PUBLICANDO, StatusPostagem.AGENDADO)
+    validar_transicao_postagem(StatusPostagem.PUBLICANDO, StatusPostagem.FALHA)
 
     with pytest.raises(ErroTransicaoEstado):
         validar_transicao_postagem(StatusPostagem.PUBLICADO, StatusPostagem.AGENDADO)

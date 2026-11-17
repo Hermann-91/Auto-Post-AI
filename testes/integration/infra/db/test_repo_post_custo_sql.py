@@ -94,6 +94,22 @@ async def test_postagem_agendada_e_idempotencia(
             )
         )
 
+    rascunho_txt = Postagem(
+        empresa_id=emp_id, conta_ig_id=conta_id, tipo_midia=TipoMidia.IMAGE,
+        midias_chaves=[], legenda="Rascunho só texto SQL",
+    )
+    travada = Postagem(
+        empresa_id=emp_id, conta_ig_id=conta_id, tipo_midia=TipoMidia.IMAGE,
+        midias_chaves=["k4.jpg"], status=StatusPostagem.PUBLICANDO,
+        atualizado_em=agora - timedelta(minutes=10),
+    )
+    await post_repo.salvar(rascunho_txt)
+    await post_repo.salvar(travada)
+    salvo = await post_repo.buscar_por_id(emp_id, conta_id, rascunho_txt.id)
+    assert salvo is not None and salvo.midias_chaves == []
+    travadas = await post_repo.listar_publicando_travadas(agora - timedelta(minutes=5))
+    assert [t.id for t in travadas] == [travada.id]
+
 
 async def test_custo_soma_mensal_inclusive_dezembro(
     contexto_publicacao: tuple[async_sessionmaker[AsyncSession], UUID, UUID],

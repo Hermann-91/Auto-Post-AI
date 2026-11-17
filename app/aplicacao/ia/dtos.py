@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Protocol
 from uuid import UUID
@@ -132,6 +132,7 @@ class CriarConteudoCmd:
     modo_serie: bool = False
     etapa_serie: str = ""
     prompt_avancado: str = ""
+    agendar_para: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +151,7 @@ class ConteudoGeradoDTO:
     qualidade_revisao: dict[str, Any] | None = None
     revisoes_visuais: int = 0
     tentativas_geracao_imagem: int = 0
+    horario_sugerido: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,6 +180,9 @@ class ProporPlanejamentoCmd:
     midia_ids_anexadas: tuple[UUID, ...] = ()
     presets_melhoria: tuple[str, ...] = ()
     instrucao_melhoria: str = ""
+    composicao_formatos: dict[str, int] | None = None
+    auto_agendar: bool = False
+    fuso_horario: str = "America/Sao_Paulo"
 
 
 @dataclass(frozen=True, slots=True)

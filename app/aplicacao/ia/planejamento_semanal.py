@@ -5,10 +5,14 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import UUID
 
+from app.aplicacao.ia.agendamento_grade import (
+    executar_itens_grade,
+    validar_e_expandir_composicao,
+    validar_fuso_horario,
+)
 from app.aplicacao.ia.criar_conteudo import CriarConteudoUseCase
 from app.aplicacao.ia.dtos import ProporPlanejamentoCmd, ResultadoExecucaoPlanoDTO
 from app.aplicacao.ia.grade_semanal import (
-    montar_cmd_item_grade,
     montar_prompt_grade_semanal,
     normalizar_itens_grade,
 )
@@ -19,8 +23,8 @@ from app.aplicacao.ia.servico_orcamento import (
     estimar_plano_semanal,
 )
 from app.aplicacao.ia.servico_prompts_rag import ServicoPromptsRagUseCase
-from app.dominio.entidades.publicacao import PlanejamentoSemanal, Postagem
-from app.dominio.excecoes import ErroDominio, ErroOrcamentoExcedido, ErroValidacaoDominio
+from app.dominio.entidades.publicacao import PlanejamentoSemanal
+from app.dominio.excecoes import ErroOrcamentoExcedido, ErroValidacaoDominio
 from app.dominio.objetos_valor.enums_conteudo import StatusPlanejamento
 from app.dominio.portas.ia_meta import ClienteIAPort, PesquisaTendenciasPort
 from app.dominio.portas.repositorios_conteudo import (
@@ -55,8 +59,10 @@ class PlanejamentoSemanalUseCase:
 
     async def propor_semana(self, cmd: ProporPlanejamentoCmd) -> PlanejamentoSemanal:
         """Etapa 1: consulta cache web/RAG/favoritas, gera grade JSON e estima USD."""
-        if not 1 <= cmd.quantidade_posts <= 14:
-            raise ErroValidacaoDominio("Quantidade de posts da semana deve estar entre 1 e 14.")
+        qtd_total, formatos_seq = validar_e_expandir_composicao(
+            cmd.composicao_formatos, cmd.quantidade_posts
+        )
+        zona = validar_fuso_horario(cmd.fuso_horario)
         conta = await self._prompts_rag.exigir_conta(cmd.empresa_id, cmd.conta_ig_id)
         config = await self._config_repo.obter_ou_padrao(cmd.empresa_id, cmd.conta_ig_id)
 
@@ -73,7 +79,7 @@ class PlanejamentoSemanalUseCase:
 
         system_prompt = self._prompts_rag.montar_system_prompt(conta, config)
         user_prompt = montar_prompt_grade_semanal(
-            cmd, nicho, regiao, tendencias, chunks, ancoras
+            cmd, nicho, regiao, tendencias, chunks, ancoras, formatos_seq or None
         )
 
         decisao = await self._orcamento.decidir_politica_chamada(
@@ -91,16 +97,23 @@ class PlanejamentoSemanalUseCase:
         brutos = dados.get("itens")
         if not isinstance(brutos, list):
             raise ErroValidacaoDominio("Grade semanal retornada pela IA não contém lista 'itens'.")
-        itens = normalizar_itens_grade(brutos, cmd.quantidade_posts, cmd.incluir_imagens_ia)
+        itens = normalizar_itens_grade(
+            brutos, qtd_total, cmd.incluir_imagens_ia, formatos_seq or None
+        )
         custo_est = estimar_plano_semanal(itens, config.modelo_texto_pref, config.modelo_img_pref)
+        tendencias_salvas = {
+            **tendencias,
+            "_config_plano": {
+                "auto_agendar": cmd.auto_agendar,
+                "fuso_horario": str(zona),
+                "composicao_formatos": cmd.composicao_formatos or {},
+            },
+        }
 
         plano = PlanejamentoSemanal(
-            empresa_id=cmd.empresa_id,
-            conta_ig_id=cmd.conta_ig_id,
-            semana_inicio=cmd.semana_inicio,
-            itens_grade=itens,
-            tendencias_cache=tendencias,
-            custo_estimado_usd=custo_est,
+            empresa_id=cmd.empresa_id, conta_ig_id=cmd.conta_ig_id,
+            semana_inicio=cmd.semana_inicio, itens_grade=itens,
+            tendencias_cache=tendencias_salvas, custo_estimado_usd=custo_est,
         )
         plano.enviar_para_aprovacao()
         return await self._plano_repo.salvar(plano)
@@ -128,6 +141,8 @@ class PlanejamentoSemanalUseCase:
         empresa_id: UUID,
         conta_ig_id: UUID,
         plano_id: UUID,
+        auto_agendar: bool | None = None,
+        fuso_horario: str | None = None,
     ) -> ResultadoExecucaoPlanoDTO:
         """Etapa 2b: executa os itens aprovados gerando mídias IA e rascunhos."""
         plano = await self.obter_plano(empresa_id, conta_ig_id, plano_id)
@@ -139,21 +154,9 @@ class PlanejamentoSemanalUseCase:
         plano.iniciar_execucao()
         await self._plano_repo.salvar(plano)
 
-        postagens: list[Postagem] = []
-        falhas: list[str] = []
-        custo_real = Decimal("0")
-
-        for item in plano.itens_grade:
-            try:
-                cmd_item = montar_cmd_item_grade(
-                    empresa_id, conta_ig_id, plano.id, item
-                )
-                res = await self._criador.executar(cmd_item)
-                custo_real += res.custo_total_usd
-                if res.postagem is not None:
-                    postagens.append(res.postagem)
-            except ErroDominio as exc:
-                falhas.append(f"Item {item.get('ordem', '?')}: {exc}")
+        postagens, falhas, custo_real = await executar_itens_grade(
+            plano, self._criador, auto_agendar, fuso_horario
+        )
 
         if falhas and not postagens and custo_real == Decimal("0"):
             plano.marcar_falha()

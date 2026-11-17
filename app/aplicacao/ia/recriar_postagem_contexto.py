@@ -67,9 +67,10 @@ class RecriarPostagemContextoUseCase:
         if midia is None:
             raise ErroValidacaoDominio("Mídia externa selecionada não pertence a esta conta.")
         if post.tipo_midia == TipoMidia.CAROUSEL and len(post.midias_chaves) >= 2:
-            post.midias_chaves[0] = midia.chave_storage
+            novas = [midia.chave_storage, *post.midias_chaves[1:]]
         else:
-            post.midias_chaves = [midia.chave_storage]
+            novas = [midia.chave_storage]
+        post.definir_midias(novas)
         return await self._post_repo.salvar(post)
 
     async def recriar_com_contexto(
@@ -165,7 +166,8 @@ class RecriarPostagemContextoUseCase:
             cmd_visual, config, prompt_visual=prompt_cena, scene_spec=scene_spec
         )
         if post.tipo_midia == TipoMidia.CAROUSEL and len(post.midias_chaves) >= 2:
-            post.midias_chaves[0] = res_visual.midia.chave_storage
+            novas = [res_visual.midia.chave_storage, *post.midias_chaves[1:]]
         else:
-            post.midias_chaves = [res_visual.midia.chave_storage]
+            novas = [res_visual.midia.chave_storage]
+        post.definir_midias(novas)
         return await self._post_repo.salvar(post)

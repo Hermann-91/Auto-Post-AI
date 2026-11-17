@@ -38,12 +38,17 @@ class Postagem:
     erro_detalhe: str | None = None
     id: UUID = field(default_factory=uuid4)
     criado_em: datetime = field(default_factory=lambda: datetime.now(UTC))
+    tentativas_publicacao: int = 0
+    atualizado_em: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self) -> None:
         self.validar_invariantes()
 
-    def validar_invariantes(self) -> None:
-        """Aplica regras estruturais da Meta Graph API por tipo de mídia."""
+    def _tocar(self, agora: datetime | None = None) -> None:
+        self.atualizado_em = agora or datetime.now(UTC)
+
+    def validar_invariantes_midia(self) -> None:
+        """Exige regras estritas da Meta Graph API para agendamento ou publicação."""
         qtd = len(self.midias_chaves)
         if self.tipo_midia == TipoMidia.CAROUSEL:
             if not 2 <= qtd <= 10:
@@ -55,19 +60,52 @@ class Postagem:
         if self.tipo_midia == TipoMidia.STORIES and self.legenda.strip():
             raise ErroValidacaoDominio("Stories não aceita legenda textual na Meta API.")
 
-    def agendar(self, para: datetime) -> None:
+    def validar_invariantes(self) -> None:
+        """Permite rascunho só-texto sem mídia; exige invariantes Meta nos demais casos."""
+        if self.tentativas_publicacao < 0:
+            raise ErroValidacaoDominio("Tentativas de publicação não pode ser negativo.")
+        if self.tipo_midia == TipoMidia.STORIES and self.legenda.strip():
+            raise ErroValidacaoDominio("Stories não aceita legenda textual na Meta API.")
+        if self.status == StatusPostagem.RASCUNHO and not self.midias_chaves:
+            return
+        self.validar_invariantes_midia()
+
+    def definir_midias(self, chaves: list[str], agora: datetime | None = None) -> None:
+        """Anexa ou substitui mídias em postagens não finalizadas validando invariantes."""
+        if self.status in {
+            StatusPostagem.PUBLICANDO,
+            StatusPostagem.PUBLICADO,
+            StatusPostagem.CANCELADO,
+        }:
+            raise ErroValidacaoDominio(
+                "Não é possível alterar mídias no status atual da postagem."
+            )
+        self.midias_chaves = list(chaves)
+        self.validar_invariantes()
+        self._tocar(agora)
+
+    def agendar(self, para: datetime, agora: datetime | None = None) -> None:
         """Agenda a postagem para execução futura no Worker."""
+        self.validar_invariantes_midia()
         validar_transicao_postagem(self.status, StatusPostagem.AGENDADO)
         self.agendado_para = para
         self.erro_detalhe = None
         self.status = StatusPostagem.AGENDADO
+        self._tocar(agora)
 
-    def iniciar_publicacao(self) -> None:
+    def iniciar_publicacao(self, agora: datetime | None = None) -> None:
         """Trava a postagem antes do envio à Meta."""
+        self.validar_invariantes_midia()
         validar_transicao_postagem(self.status, StatusPostagem.PUBLICANDO)
         self.status = StatusPostagem.PUBLICANDO
+        self._tocar(agora)
 
-    def marcar_publicado(self, meta_media_id: str, meta_container_id: str | None = None) -> None:
+    def marcar_publicado(
+        self,
+        meta_media_id: str,
+        meta_container_id: str | None = None,
+        agora: datetime | None = None,
+    ) -> None:
         """Finaliza postagem publicada com identificadores oficiais da Meta."""
         validar_transicao_postagem(self.status, StatusPostagem.PUBLICADO)
         if not meta_media_id.strip():
@@ -76,12 +114,32 @@ class Postagem:
         self.meta_container_id = meta_container_id or self.meta_container_id
         self.erro_detalhe = None
         self.status = StatusPostagem.PUBLICADO
+        self._tocar(agora)
 
-    def marcar_falha(self, detalhe: str) -> None:
+    def marcar_falha(self, detalhe: str, agora: datetime | None = None) -> None:
         """Registra falha detalhada para inspeção ou reagendamento."""
         validar_transicao_postagem(self.status, StatusPostagem.FALHA)
         self.erro_detalhe = detalhe.strip() or "Falha não especificada na publicação."
         self.status = StatusPostagem.FALHA
+        self._tocar(agora)
+
+    def reagendar_por_falha_transitoria(
+        self, para: datetime, detalhe: str, agora: datetime | None = None
+    ) -> None:
+        """Devolve postagem de PUBLICANDO para AGENDADO incrementando tentativas."""
+        self.validar_invariantes_midia()
+        validar_transicao_postagem(self.status, StatusPostagem.AGENDADO)
+        self.tentativas_publicacao += 1
+        self.agendado_para = para
+        self.erro_detalhe = detalhe.strip() or "Falha transitória na publicação."
+        self.status = StatusPostagem.AGENDADO
+        self._tocar(agora)
+
+    def cancelar(self, agora: datetime | None = None) -> None:
+        """Cancela postagem que ainda não entrou em publicação ou conclusão."""
+        validar_transicao_postagem(self.status, StatusPostagem.CANCELADO)
+        self.status = StatusPostagem.CANCELADO
+        self._tocar(agora)
 
 
 @dataclass(slots=True)

@@ -18,6 +18,7 @@ TRANSICOES_POSTAGEM: dict[StatusPostagem, frozenset[StatusPostagem]] = {
     StatusPostagem.PUBLICANDO: frozenset({
         StatusPostagem.PUBLICADO,
         StatusPostagem.FALHA,
+        StatusPostagem.AGENDADO,
     }),
     StatusPostagem.FALHA: frozenset({
         StatusPostagem.AGENDADO,

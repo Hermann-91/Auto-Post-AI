@@ -129,14 +129,16 @@ def montar_payload_texto(
 
 
 def montar_payload_visao(
-    system_prompt: str, user_prompt: str, imagem_data_url: str, modelo: str
+    system_prompt: str, user_prompt: str, imagem_data_url: str | Sequence[str], modelo: str
 ) -> dict[str, Any]:
-    """Monta payload multimodal validando esquema da imagem contra SSRF."""
-    url_segura = validar_url_imagem(imagem_data_url)
-    conteudo = [
-        {"type": "text", "text": user_prompt},
-        {"type": "image_url", "image_url": {"url": url_segura}},
-    ]
+    """Monta payload multimodal para 1 ou N imagens validando contra SSRF."""
+    brutas = [imagem_data_url] if isinstance(imagem_data_url, str) else list(imagem_data_url)
+    if not brutas:
+        raise ErroValidacaoDominio("Informe ao menos uma imagem para análise visual.")
+    conteudo: list[dict[str, Any]] = [{"type": "text", "text": user_prompt}]
+    conteudo.extend(
+        {"type": "image_url", "image_url": {"url": validar_url_imagem(u)}} for u in brutas
+    )
     return {
         "model": modelo,
         "messages": [

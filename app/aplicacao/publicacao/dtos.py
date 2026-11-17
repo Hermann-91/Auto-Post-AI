@@ -45,6 +45,17 @@ class AgendarPostagemCmd:
 
 
 @dataclass(frozen=True, slots=True)
+class AnexarMidiasPostagemCmd:
+    """Comando para anexar ou substituir mídias em rascunho/postagem existente."""
+
+    empresa_id: UUID
+    conta_ig_id: UUID
+    postagem_id: UUID
+    midia_ids: tuple[UUID, ...] = ()
+    midias_chaves: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class ResultadoPublicacaoDTO:
     """Resultado consolidado de uma tentativa de publicação oficial Meta."""
 
@@ -63,6 +74,7 @@ class ResultadoLoteWorkerDTO:
     reagendadas: int = 0
     falhas: int = 0
     ignoradas_por_lock: int = 0
+    recuperadas_travadas: int = 0
 
 
 @dataclass(frozen=True, slots=True)

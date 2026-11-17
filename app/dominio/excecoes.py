@@ -58,6 +58,10 @@ class ErroIntegracaoIA(ErroDominio):
 class ErroIntegracaoMeta(ErroDominio):
     """Falha de autenticação OAuth, container ou publicação na Meta Graph API."""
 
+    def __init__(self, mensagem: str = "", *, transitorio: bool = False) -> None:
+        super().__init__(mensagem)
+        self.transitorio = transitorio
+
 
 class ErroLimitePublicacaoMeta(ErroIntegracaoMeta):
     """Teto móvel de 24h de publicações (content_publishing_limit) atingido."""

@@ -93,6 +93,17 @@ class InMemoryPostagemRepository:
             key=lambda p: p.agendado_para or ate_momento,
         )
 
+    async def listar_publicando_travadas(self, atualizado_ate: datetime) -> list[Postagem]:
+        return sorted(
+            [
+                p
+                for p in self._itens.values()
+                if p.status == StatusPostagem.PUBLICANDO
+                and p.atualizado_em <= atualizado_ate
+            ],
+            key=lambda p: p.atualizado_em,
+        )
+
     async def remover(self, empresa_id: UUID, conta_ig_id: UUID, postagem_id: UUID) -> bool:
         post = await self.buscar_por_id(empresa_id, conta_ig_id, postagem_id)
         if post is None:

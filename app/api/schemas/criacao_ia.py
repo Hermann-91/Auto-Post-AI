@@ -35,8 +35,11 @@ __all__ = [
     "ContaInstagramResumoResponse",
     "CriarConteudoRequest",
     "CriarConteudoResponse",
+    "CuradoriaLoteRequest",
+    "CuradoriaLoteResponse",
     "CuradoriaVisualResponse",
     "ExecucaoPlanejamentoResponse",
+    "ExecutarPlanejamentoRequest",
     "FonteRagResponse",
     "IndexarFonteRagRequest",
     "IndexarUrlRagRequest",
@@ -71,6 +74,7 @@ class CriarConteudoRequest(BaseModel):
     modo_serie: bool = False
     etapa_serie: str = Field(default="", max_length=120)
     prompt_avancado: str = Field(default="", max_length=500)
+    agendar_para: datetime | None = None
 
 
 class MidiaResumoResponse(BaseModel):
@@ -91,6 +95,7 @@ class PostagemResumoResponse(BaseModel):
     legenda: str
     status: StatusPostagem
     planejamento_id: UUID | None
+    agendado_para: datetime | None = None
 
 
 class CriarConteudoResponse(BaseModel):
@@ -106,11 +111,30 @@ class CriarConteudoResponse(BaseModel):
     qualidade_revisao: dict[str, Any] | None = None
     revisoes_visuais: int = 0
     tentativas_geracao_imagem: int = 0
+    horario_sugerido: str = ""
 
 
 class CuradoriaVisualResponse(BaseModel):
     midia_id: UUID
     resumo_visual: str
+    custo_usd: Decimal
+    modelo_usado: str
+
+
+class CuradoriaLoteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    midia_ids: list[UUID] = Field(min_length=1, max_length=5)
+    objetivo_contexto: str = Field(default="", max_length=300)
+    modelo_visao: str | None = Field(default=None, max_length=160)
+
+
+class CuradoriaLoteResponse(BaseModel):
+    midia_vencedora_id: UUID
+    chave_storage: str
+    indice_vencedora: int
+    justificativa: str
+    avaliacoes: list[dict[str, Any]]
     custo_usd: Decimal
     modelo_usado: str
 
@@ -131,6 +155,16 @@ class ProporPlanejamentoRequest(BaseModel):
     midia_ids_anexadas: list[UUID] = Field(default_factory=list, max_length=14)
     presets_melhoria: list[str] = Field(default_factory=list, max_length=6)
     instrucao_melhoria: str = Field(default="", max_length=300)
+    composicao_formatos: dict[str, int] | None = None
+    auto_agendar: bool = False
+    fuso_horario: str = Field(default="America/Sao_Paulo", max_length=64)
+
+
+class ExecutarPlanejamentoRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    auto_agendar: bool | None = None
+    fuso_horario: str | None = Field(default=None, max_length=64)
 
 
 class AtualizarItensPlanoRequest(BaseModel):

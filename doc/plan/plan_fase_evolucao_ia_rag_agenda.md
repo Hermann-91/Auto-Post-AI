@@ -22,9 +22,9 @@
 - [x] **Fase 2: Pipeline Visual (Diretor de Arte, Séries, Referência Real & Crítico em 2 Loops)**
   - Status: Concluído
   - Commit: `feat(visual): diretor de arte documental, series narrativas, referencia real e critico em 2 loops`
-- [ ] **Fase 3: Visão em Fotos Anexadas, Rascunho Só-Texto, Auto-Agendamento & Worker Resiliente**
-  - Status: Pendente
-  - Commit: `pendente`
+- [x] **Fase 3: Visão em Fotos Anexadas, Rascunho Só-Texto, Auto-Agendamento & Worker Resiliente**
+  - Status: Concluído
+  - Commit: `feat(agenda): visao em fotos anexadas, rascunho texto-primeiro, auto-agendamento e worker resiliente`
 - [ ] **Fase 4: Jobs Assíncronos & Estúdio Unificado Zero-Prompt no Painel Web**
   - Status: Pendente
   - Commit: `pendente`
@@ -126,3 +126,9 @@
   - `DiretorArteService` (`diretor_arte.py`) desacoplado do Copywriter em `criar_conteudo.py`: aplica regras documentais globais + identidade visual isolada da conta, remove clichês `"8k/fullhd/HDR/studio"`, suporta `pilar_editorial`, `prompt_avancado`, **Modo Série** (`modo_serie` + `etapa_serie`) e **Memória Anti-Repetição** (`prompts_brand_bible.py` / `servico_prompts_rag.py`).
   - `AvaliadorVisualCritico` (`avaliador_visual.py`) + `GeradorVisualHibrido` (`geracao_visual.py`) executam loop `gerar -> avaliar VLM -> corrigir` limitado a no máximo **2 iterações**, com teto conservador em `estimar_pipeline_visual` (`servico_orcamento.py`) e registro de custos por iteração.
   - Bugfix em `recriar_postagem_contexto.py` eliminou duplicação de `contexto_adicional` e vazamento de RAG bruto ao gerador de imagens; campos opcionais expostos em `criacao_ia.py`/`criacao.py` e ligados em `provedores_ia.py`. Quality Gate: 34/34 Fase 2 e 151/151 suíte completa verdes.
+- **Fase 3 concluída em 2026-11-16 22:30:**
+  - `Postagem` (`publicacao.py`) + `maquina_estados.py` flexibilizados para `midias_chaves=[]` apenas em `RASCUNHO`, exigindo `validar_invariantes_midia()` em `agendar()`, `iniciar_publicacao()` e `definir_midias()`, além de `PUBLICANDO -> AGENDADO/FALHA`, `tentativas_publicacao` e `atualizado_em` persistidos via migração `0003_postagem_resiliencia_worker`.
+  - `SqlCustoRepository` extraído para `repo_custo_sql.py` (com re-exportação em `repo_post_custo_sql.py`); `ErroIntegracaoMeta.transitorio` desacopla erros HTTP `429`/`5xx` e timeouts (`modelos_meta.py`) para `resiliencia_publicacao.py` aplicar retry com backoff exponencial em `ServicoAgendamentoUseCase` e recuperação de posts presos em `PUBLICANDO` além do TTL do lock em `ExecutorLotesWorker`.
+  - Porta segregada `ClienteVisaoMultimodalPort` (`ia_meta.py`) implementada em `ClienteOpenRouter`/`ClienteIANaoConfigurado` via `montar_payload_visao`; `ServicoCuradoriaVisualUseCase.eleger_melhor_foto` compara até 5 imagens isoladas por conta (exposto em `POST /ia/curadoria/{conta_ig_id}/eleger-melhor`).
+  - `visao_conteudo.py` envia miniatura compactada `<= 1024px` de `midia_base_ids` em `CriarConteudoUseCase` (gerando legenda guiada pela foto real e `horario_sugerido`) e libera rascunhos só-texto (`salvar_rascunho=True`); rota `PATCH /posts/{conta_ig_id}/{postagem_id}/midias` anexa 1..10 mídias depois.
+  - `agendamento_grade.py`, `grade_semanal.py`, `planejamento_semanal.py`, `servico_orcamento.py` e `edicao_orcamento_semanal.py` corrigem criação de rascunhos só-texto na semana, suportam `composicao_formatos` dinâmica, recalculam orçamento por formato/visão e convertem `auto_agendar=True` para UTC real a partir de `America/Sao_Paulo` (ou `fuso_horario` IANA opcional). Quality Gate: 158/158 testes verdes, `ruff` e `mypy --strict` limpos e todos os arquivos `<= 200` linhas.

@@ -148,3 +148,46 @@ async def test_executor_concorrente_sem_duplicacao_e_renovacao_tokens() -> None:
     assert cripto.descriptografar(c_perto.access_token_enc) == "tok_perto_renovado"
     assert c_longe is not None
     assert cripto.descriptografar(c_longe.access_token_enc) == "tok_longe"
+
+
+async def test_worker_recupera_postagem_presa_em_publicando_alem_do_ttl() -> None:
+    conta_repo = InMemoryContaIGRepository()
+    midia_repo = InMemoryMidiaRepository()
+    post_repo = InMemoryPostagemRepository()
+    cripto = FernetCipher([Fernet.generate_key().decode("utf-8")])
+    lock, pub = LockMemoria(), _FakePublicadorLento()
+    emp_id = uuid4()
+    conta = await conta_repo.salvar(
+        ContaInstagram(
+            empresa_id=emp_id, ig_user_id="103", username="travada",
+            access_token_enc=cripto.criptografar("tok_trav"),
+            token_expira_em=datetime.now(UTC) + timedelta(days=30),
+        )
+    )
+    agora = datetime(2026, 11, 16, 20, 0, tzinfo=UTC)
+    presa = Postagem(
+        empresa_id=emp_id, conta_ig_id=conta.id, tipo_midia=TipoMidia.IMAGE,
+        midias_chaves=["foto.jpg"], status=StatusPostagem.PUBLICANDO,
+        atualizado_em=agora - timedelta(seconds=400),
+    )
+    esgotada = Postagem(
+        empresa_id=emp_id, conta_ig_id=conta.id, tipo_midia=TipoMidia.IMAGE,
+        midias_chaves=["foto2.jpg"], status=StatusPostagem.PUBLICANDO,
+        tentativas_publicacao=2, atualizado_em=agora - timedelta(seconds=400),
+    )
+    await post_repo.salvar(presa)
+    await post_repo.salvar(esgotada)
+
+    ag_uc = ServicoAgendamentoUseCase(
+        conta_repo, midia_repo, post_repo, _FakeStorage(), cripto, _FabricaUnica(pub), lock
+    )
+    oauth_uc = ServicoOAuthMetaUseCase(conta_repo, _FakeAuth(), cripto, StateOAuthMemoria())
+    executor = ExecutorLotesWorker(
+        post_repo, conta_repo, ag_uc, oauth_uc, lock, lock_ttl_segundos=300
+    )
+    res = await executor.executar_ciclo_publicacoes(agora=agora)
+    assert res.recuperadas_travadas == 2 and res.publicadas == 1 and pub.chamadas == 1
+    p1 = await post_repo.buscar_por_id(emp_id, conta.id, presa.id)
+    p2 = await post_repo.buscar_por_id(emp_id, conta.id, esgotada.id)
+    assert p1 is not None and p1.status == StatusPostagem.PUBLICADO
+    assert p2 is not None and p2.status == StatusPostagem.FALHA

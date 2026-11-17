@@ -126,6 +126,7 @@ class PostagemModel(Base):
     __table_args__ = (
         Index("ix_posts_tenant_conta_status", "empresa_id", "conta_ig_id", "status"),
         Index("ix_posts_agendado_status", "status", "agendado_para"),
+        Index("ix_posts_status_atualizado", "status", "atualizado_em"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
@@ -148,6 +149,8 @@ class PostagemModel(Base):
     meta_media_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     erro_detalhe: Mapped[str | None] = mapped_column(Text, nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTimeUTC(), nullable=False)
+    tentativas_publicacao: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTimeUTC(), nullable=False)
 
 
 class RegistroCustoIAModel(Base):

@@ -32,6 +32,7 @@ async def exigir_conta_ativa(
 async def resolver_chaves_midias(
     midia_repo: MidiaRepositoryPort,
     cmd: CriarPostagemCmd,
+    exigir_midia: bool = True,
 ) -> list[str]:
     """Resolve e valida que todas as mídias pertencem à conta do tenant (anti-IDOR)."""
     chaves: list[str] = []
@@ -50,7 +51,7 @@ async def resolver_chaves_midias(
                 raise ErroValidacaoDominio("Chave de mídia não pertence a esta conta.")
             chaves.append(limpa)
 
-    if not chaves:
+    if exigir_midia and not chaves:
         raise ErroValidacaoDominio("Informe ao menos uma mídia válida da biblioteca.")
     return chaves
 

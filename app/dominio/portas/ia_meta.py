@@ -47,6 +47,16 @@ class ClienteVisaoPort(Protocol):
     ) -> tuple[str, dict[str, Any]]: ...
 
 
+class ClienteVisaoMultimodalPort(Protocol):
+    async def analisar_multiplas_imagens(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        imagens_data_urls: Sequence[str],
+        modelo: str,
+    ) -> tuple[str, dict[str, Any]]: ...
+
+
 class ClienteEmbeddingsPort(Protocol):
     async def gerar_embeddings(
         self,
