@@ -60,6 +60,12 @@ class PlanejamentoRepositoryPort(Protocol):
         empresa_id: UUID,
         conta_ig_id: UUID,
     ) -> list[PlanejamentoSemanal]: ...
+    async def remover(
+        self,
+        empresa_id: UUID,
+        conta_ig_id: UUID,
+        plano_id: UUID,
+    ) -> bool: ...
 
 
 class PostagemRepositoryPort(Protocol):

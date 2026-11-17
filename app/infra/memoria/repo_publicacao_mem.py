@@ -44,6 +44,13 @@ class InMemoryPlanejamentoRepository:
         ]
         return sorted(itens, key=lambda p: p.semana_inicio, reverse=True)
 
+    async def remover(self, empresa_id: UUID, conta_ig_id: UUID, plano_id: UUID) -> bool:
+        plano = await self.buscar_por_id(empresa_id, conta_ig_id, plano_id)
+        if plano is None:
+            return False
+        self._itens.pop(plano_id, None)
+        return True
+
 
 class InMemoryPostagemRepository:
     """Armazena postagens em memória com busca por conta e fila agendada."""

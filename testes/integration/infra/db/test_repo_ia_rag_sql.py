@@ -116,3 +116,7 @@ async def test_config_ia_rag_e_planejamento_por_conta(
     assert await plan_repo.buscar_por_id(emp_id, conta_b, plano.id) is None
     assert len(await plan_repo.listar_por_conta(emp_id, conta_a)) == 1
     assert await plan_repo.listar_por_conta(emp_id, conta_b) == []
+    assert await plan_repo.remover(emp_id, conta_b, plano.id) is False
+    assert await plan_repo.remover(emp_id, conta_a, plano.id) is True
+    assert await plan_repo.buscar_por_id(emp_id, conta_a, plano.id) is None
+    assert await plan_repo.listar_por_conta(emp_id, conta_a) == []

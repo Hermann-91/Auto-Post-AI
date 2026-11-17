@@ -8,6 +8,7 @@ from uuid import UUID
 
 from app.aplicacao.ia.agendamento_grade import (
     executar_itens_grade,
+    preparar_reexecucao_plano,
     validar_e_expandir_composicao,
     validar_fuso_horario,
 )
@@ -120,10 +121,7 @@ class PlanejamentoSemanalUseCase:
         return await self._plano_repo.salvar(plano)
 
     async def aprovar_plano(
-        self,
-        empresa_id: UUID,
-        conta_ig_id: UUID,
-        plano_id: UUID,
+        self, empresa_id: UUID, conta_ig_id: UUID, plano_id: UUID
     ) -> PlanejamentoSemanal:
         """Etapa 2a: valida orçamento estimado e aprova plano para execução/Worker."""
         plano = await self.obter_plano(empresa_id, conta_ig_id, plano_id)
@@ -148,15 +146,7 @@ class PlanejamentoSemanalUseCase:
     ) -> ResultadoExecucaoPlanoDTO:
         """Etapa 2b: executa os itens aprovados gerando mídias IA e rascunhos."""
         plano = await self.obter_plano(empresa_id, conta_ig_id, plano_id)
-        if plano.status in {StatusPlanejamento.CONCLUIDO, StatusPlanejamento.FALHA}:
-            plano.status = StatusPlanejamento.APROVADO
-            for it in plano.itens_grade:
-                if (
-                    isinstance(it, dict)
-                    and str(it.get("formato") or "").upper() != "REELS"
-                    and not it.get("midia_base_ids")
-                ):
-                    it["usar_ia_imagem"] = True
+        preparar_reexecucao_plano(plano)
         plano.iniciar_execucao()
         await self._plano_repo.salvar(plano)
 
@@ -177,10 +167,7 @@ class PlanejamentoSemanalUseCase:
         )
 
     async def obter_plano(
-        self,
-        empresa_id: UUID,
-        conta_ig_id: UUID,
-        plano_id: UUID,
+        self, empresa_id: UUID, conta_ig_id: UUID, plano_id: UUID
     ) -> PlanejamentoSemanal:
         await self._prompts_rag.exigir_conta(empresa_id, conta_ig_id)
         plano = await self._plano_repo.buscar_por_id(empresa_id, conta_ig_id, plano_id)
@@ -188,10 +175,16 @@ class PlanejamentoSemanalUseCase:
             raise ErroValidacaoDominio("Planejamento semanal não encontrado para esta conta.")
         return plano
 
-    async def listar_planos(
-        self,
-        empresa_id: UUID,
-        conta_ig_id: UUID,
-    ) -> list[PlanejamentoSemanal]:
+    async def listar_planos(self, empresa_id: UUID, conta_ig_id: UUID) -> list[PlanejamentoSemanal]:
         await self._prompts_rag.exigir_conta(empresa_id, conta_ig_id)
         return await self._plano_repo.listar_por_conta(empresa_id, conta_ig_id)
+
+    async def remover_plano(self, empresa_id: UUID, conta_ig_id: UUID, plano_id: UUID) -> bool:
+        """Remove um planejamento semanal escopado por (empresa_id, conta_ig_id)."""
+        await self._prompts_rag.exigir_conta(empresa_id, conta_ig_id)
+        plano = await self._plano_repo.buscar_por_id(empresa_id, conta_ig_id, plano_id)
+        if plano is None:
+            return False
+        if plano.status == StatusPlanejamento.EM_EXECUCAO:
+            raise ErroValidacaoDominio("Não é possível excluir um planejamento em execução.")
+        return await self._plano_repo.remover(empresa_id, conta_ig_id, plano_id)

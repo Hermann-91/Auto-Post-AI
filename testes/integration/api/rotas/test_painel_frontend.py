@@ -42,7 +42,8 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
         css_main = await cli.get("/painel/css/styles.css")
         assert js_app.status_code == 200 and css_main.status_code == 200 and "_blank" in js_cfg.text
         for rota in (
-            "/painel/css/agenda.css", "/painel/js/planejamento.js",
+            "/painel/css/tokens.css", "/painel/css/agenda.css",
+            "/painel/js/icones.js", "/painel/js/planejamento.js",
             "/painel/js/rag.js",
             "/painel/js/componentes/estudio_unificado.js",
             "/painel/js/componentes/seletor_midia_ia.js",
@@ -50,6 +51,9 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
             "/painel/js/componentes/modal_recriacao.js", "/painel/js/componentes/card_agenda.js",
         ):
             assert (await cli.get(rota)).status_code == 200
+        icones_js = (await cli.get("/painel/js/icones.js")).text
+        assert "createElementNS" in icones_js and "innerHTML" not in icones_js
+        assert "--surface-inset" in (await cli.get("/painel/css/tokens.css")).text
         estudio_js = (await cli.get("/painel/js/componentes/estudio_unificado.js")).text
         card_js = (await cli.get("/painel/js/componentes/card_agenda.js")).text
         assert "MANUAL_ZERO" in estudio_js and "SO_TEXTO" in estudio_js

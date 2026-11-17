@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from app.api.dependencias.provedores_ia import (
     obter_edicao_orcamento_uc,
@@ -151,3 +151,18 @@ async def executar_planejamento(
         falhas_itens=res.falhas_itens,
         custo_real_usd=res.custo_real_usd,
     )
+
+
+@router.delete("/{conta_ig_id}/{plano_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remover_planejamento(
+    conta_ig_id: UUID,
+    plano_id: UUID,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    uc: Annotated[PlanejamentoSemanalUseCase, Depends(obter_planejamento_uc)],
+) -> None:
+    """Remove uma grade semanal da conta (204) ou retorna 404 se inexistente."""
+    if not await uc.remover_plano(ctx.empresa_id, conta_ig_id, plano_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Planejamento semanal não encontrado.",
+        )

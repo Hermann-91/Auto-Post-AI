@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from app.aplicacao.ia.grade_semanal import montar_cmd_item_grade
 from app.dominio.entidades.publicacao import PlanejamentoSemanal, Postagem
 from app.dominio.excecoes import ErroDominio, ErroValidacaoDominio
-from app.dominio.objetos_valor.enums_conteudo import TipoMidia
+from app.dominio.objetos_valor.enums_conteudo import StatusPlanejamento, TipoMidia
 
 if TYPE_CHECKING:
     from app.aplicacao.ia.criar_conteudo import CriarConteudoUseCase
@@ -101,6 +101,20 @@ def calcular_agendado_para_utc(
     hora = _resolver_hora_minuto(str(item.get("horario_sugerido") or "18:00"))
     local_dt = datetime.combine(data_alvo, hora, tzinfo=zona)
     return local_dt.astimezone(UTC)
+
+
+def preparar_reexecucao_plano(plano: PlanejamentoSemanal) -> None:
+    """Reabre planos concluídos ou falhos para nova execução de mídia e rascunhos."""
+    if plano.status not in {StatusPlanejamento.CONCLUIDO, StatusPlanejamento.FALHA}:
+        return
+    plano.status = StatusPlanejamento.APROVADO
+    for it in plano.itens_grade:
+        if (
+            isinstance(it, dict)
+            and str(it.get("formato") or "").upper() != "REELS"
+            and not it.get("midia_base_ids")
+        ):
+            it["usar_ia_imagem"] = True
 
 
 async def executar_itens_grade(

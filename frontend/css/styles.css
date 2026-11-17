@@ -23,28 +23,62 @@
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
 
 label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem; flex: 1; }
-label.check { flex-direction: row; align-items: center; gap: 0.5rem; }
+label.check, label.presets-chip, label.switch {
+  flex-direction: row; align-items: center; gap: 0.5rem; flex: 0 0 auto; cursor: pointer;
+}
 
-input, select, button {
+input:not([type="checkbox"]):not([type="radio"]), select, button {
   font: inherit;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   padding: 0.55rem 0.8rem;
+}
+input[type="checkbox"], input[type="radio"] {
+  width: 16px; height: 16px; padding: 0; margin: 0; flex-shrink: 0;
+  accent-color: var(--primary); cursor: pointer;
+}
+
+label.switch input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  width: 36px; height: 20px; border-radius: var(--radius-pill);
+  background: var(--surface-inset); border: 1px solid var(--border-strong);
+  position: relative; transition: background 0.18s ease, border-color 0.18s ease;
+}
+label.switch input[type="checkbox"]::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--muted); transition: transform 0.18s ease, background 0.18s ease;
+}
+label.switch input[type="checkbox"]:checked {
+  background: var(--primary); border-color: var(--primary);
+}
+label.switch input[type="checkbox"]:checked::after {
+  transform: translateX(16px); background: #fff;
 }
 
 input, select { background: var(--surface-strong); color: var(--text); }
 button { cursor: pointer; transition: 0.15s ease; background: transparent; color: var(--text); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+  outline: none; border-color: var(--border-strong); box-shadow: 0 0 0 3px var(--ring);
+}
+.icone-svg { flex-shrink: 0; vertical-align: middle; }
+.btn-inline-icone { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; }
 
 .btn-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border: none; font-weight: 600; }
 .btn-primary:hover { filter: brightness(1.08); }
 .btn-outline { border-color: var(--primary); color: var(--text); }
 .btn-warn { background: var(--warn); color: #111; border: none; font-weight: 600; }
 .btn-danger { background: var(--danger); color: #fff; border: none; }
+.btn-ok-soft { background: var(--ok-soft); border-color: var(--ok-border); color: var(--ok); font-weight: 600; }
+.btn-ok-soft:hover { background: var(--ok); color: #fff; }
+.btn-danger-outline { background: var(--danger-soft); border-color: var(--danger-border); color: var(--danger); }
+.btn-danger-outline:hover { background: var(--danger); color: #fff; }
 .btn-ghost:hover, .tab-btn.active, .nav-btn.active { background: var(--primary); color: #fff; border-color: transparent; }
 
 .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; border: 1px solid var(--border); }
-.badge-ok { background: rgba(16, 185, 129, 0.18); border-color: var(--ok); color: var(--ok); font-weight: 700; }
-.badge-warn { background: rgba(245, 158, 11, 0.18); border-color: var(--warn); color: var(--warn); font-weight: 700; }
+.badge-ok { background: var(--ok-soft); border-color: var(--ok-border); color: var(--ok); font-weight: 700; }
+.badge-warn { background: var(--warn-soft); border-color: var(--warn-border); color: var(--warn); font-weight: 700; }
+.badge-danger { background: var(--danger-soft); border-color: var(--danger-border); color: var(--danger); font-weight: 700; }
+.badge-info { background: var(--primary-soft); border-color: var(--primary); color: var(--text); font-weight: 700; }
 .btn-sm { padding: 0.28rem 0.55rem; font-size: 0.78rem; }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 .progress-track { height: 10px; border-radius: 999px; background: var(--border); overflow: hidden; margin: 0.6rem 0; }
