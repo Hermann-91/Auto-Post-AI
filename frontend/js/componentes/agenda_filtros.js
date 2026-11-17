@@ -1,3 +1,4 @@
+import { criarEstadoVazio } from "/painel/js/componentes/estado_vazio.js";
 import { el, limpar } from "/painel/js/dom.js";
 
 export const FILTROS_AGENDA = [
@@ -37,18 +38,14 @@ export function filtrarPostsAgenda(ativos, filtroId) {
 }
 
 export function criarEstadoVazioAgenda({ temAtivos, aoLimparFiltro }) {
-  const btnTodos = temAtivos
-    ? el("button", { type: "button", className: "btn-outline btn-sm", text: "Mostrar todas" })
-    : null;
-  btnTodos?.addEventListener("click", aoLimparFiltro);
-  return el("div", { className: "agenda-empty-state" }, [
-    el("strong", { text: temAtivos ? "Nenhuma postagem neste filtro." : "Nenhuma postagem na Agenda." }),
-    el("span", {
-      className: "small muted",
-      text: temAtivos
-        ? "Selecione outro status acima para visualizar as postagens."
-        : "Use o Estúdio de Criação acima para gerar um post com IA, propor uma grade ou adicionar um post manual.",
-    }),
-    btnTodos,
-  ]);
+  return criarEstadoVazio({
+    icone: temAtivos ? "sliders" : "calendar",
+    titulo: temAtivos ? "Nenhuma postagem neste filtro." : "Nenhuma postagem na Agenda.",
+    descricao: temAtivos
+      ? "Selecione outro status acima para visualizar as postagens."
+      : "Use o Estúdio de Criação acima para gerar um post com IA, propor uma grade ou adicionar um post manual.",
+    acaoLabel: temAtivos ? "Mostrar todas" : "",
+    aoAcionar: temAtivos ? aoLimparFiltro : null,
+    classeExtra: "agenda-empty-state",
+  });
 }

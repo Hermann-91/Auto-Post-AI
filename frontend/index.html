@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/painel/css/tokens.css" />
   <link rel="stylesheet" href="/painel/css/styles.css" />
   <link rel="stylesheet" href="/painel/css/agenda.css" />
+  <link rel="stylesheet" href="/painel/css/paineis.css" />
 </head>
 <body>
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
@@ -17,7 +18,7 @@
         <div>
           <span class="badge">SaaS Instagram</span><h1>Robo-Auto-Inst</h1><p class="muted">Criação com IA, biblioteca inteligente e publicação oficial Meta.</p>
         </div>
-        <button id="btn-tema-auth" type="button" class="btn-ghost" title="Alternar tema">◐</button>
+        <button id="btn-tema-auth" type="button" class="btn-ghost" title="Alternar tema" aria-label="Alternar tema"></button>
       </div>
 
       <div class="tabs-inline" role="tablist"><button id="tab-login" type="button" class="tab-btn active">Entrar</button><button id="tab-registro" type="button" class="tab-btn">Criar Conta</button></div>
@@ -55,7 +56,7 @@
         <button type="button" class="nav-btn" data-sec="sec-config">Config</button>
       </nav>
       <div class="topbar-controles">
-        <button id="btn-tema-app" type="button" class="btn-ghost" title="Alternar tema">◐</button>
+        <button id="btn-tema-app" type="button" class="btn-ghost" title="Alternar tema" aria-label="Alternar tema"></button>
         <button id="btn-logout" type="button" class="btn-ghost">Sair</button>
       </div>
     </header>
@@ -66,8 +67,8 @@
       <h2>Nenhuma conta Instagram conectada</h2>
       <p class="muted">Conecte sua conta Instagram Business/Creator cadastrando suas credenciais da Meta ou iniciando o fluxo OAuth.</p>
       <div class="row-actions">
-        <button id="btn-config-conta-vazio" type="button" class="btn-primary">⚙ Configurar Conta &amp; Token Meta</button>
-        <button id="btn-conectar-meta-vazio" type="button" class="btn-ghost">↗ Abrir OAuth Meta (Nova Aba)</button>
+        <button id="btn-config-conta-vazio" type="button" class="btn-primary">Configurar Conta &amp; Token Meta</button>
+        <button id="btn-conectar-meta-vazio" type="button" class="btn-ghost">Abrir OAuth Meta (Nova Aba)</button>
       </div>
     </section>
 
@@ -96,36 +97,28 @@
           </article>
         </div>
 
-        <div class="glass-card">
+        <article class="glass-card stack-sm">
           <div class="row-between">
             <div id="filtro-pastas" class="tabs-inline">
               <button type="button" class="tab-btn active" data-pasta="">Todas</button><button type="button" class="tab-btn" data-pasta="originais">originais</button><button type="button" class="tab-btn" data-pasta="processadas">processadas</button><button type="button" class="tab-btn" data-pasta="IA-Cria">IA-Cria</button><button type="button" class="tab-btn" data-pasta="IA-Edita">IA-Edita</button>
             </div>
-            <button id="btn-recarregar-bib" type="button" class="btn-ghost">Atualizar</button>
+            <button id="btn-recarregar-bib" type="button" class="btn-outline btn-sm">Atualizar</button>
           </div>
           <div id="grid-midias" class="media-grid"></div>
-        </div>
+        </article>
       </section>
 
       <section id="sec-planejamento" class="painel-sec">
         <article class="glass-card stack-sm">
-          <div class="row-between">
-            <h3>Estúdio de Criação</h3>
-            <span class="badge">Zero-Prompt • Jobs Assíncronos</span>
-          </div>
+          <div class="row-between"><h3>Estúdio de Criação</h3><span class="badge">Zero-Prompt • Jobs Assíncronos</span></div>
           <div id="estudio-unificado-root" class="stack-sm"></div>
           <div id="job-status-box" class="job-status-box hidden"></div>
         </article>
-
         <article id="resumo-semanal-box" class="glass-card stack-sm grades-card hidden" aria-live="polite"></article>
-
         <article class="glass-card stack-sm">
           <div class="agenda-header">
             <h3>Agenda de Publicações</h3>
-            <div class="agenda-header-controles">
-              <div id="agenda-filtros-status" class="agenda-filtros" role="tablist" aria-label="Filtrar postagens por status"></div>
-              <button id="btn-recarregar-posts" type="button" class="btn-outline btn-sm btn-inline-icone">Atualizar</button>
-            </div>
+            <div class="agenda-header-controles"><div id="agenda-filtros-status" class="agenda-filtros" role="tablist" aria-label="Filtrar postagens por status"></div><button id="btn-recarregar-posts" type="button" class="btn-outline btn-sm btn-inline-icone">Atualizar</button></div>
           </div>
           <div id="lista-posts" class="grid-agenda-3"></div>
         </article>
@@ -133,31 +126,39 @@
 
       <section id="sec-rag" class="painel-sec hidden">
         <article class="glass-card stack-sm">
-          <h3>Cultura da Conta — Base de Conhecimento (RAG)</h3>
-          <div id="rag-painel-root" class="stack-sm"></div>
+          <div class="row-between"><h3>Cultura da Conta — Base de Conhecimento (RAG)</h3><span class="badge">Embeddings &amp; Busca Lexical</span></div>
+          <p class="small muted">Cadastre textos, documentos ou URLs para personalizar legendas e compilar a Brand Bible da conta.</p>
+          <div id="rag-painel-root" class="rag-ingestao-grid"></div>
           <div id="lista-rag" class="stack-sm"></div>
         </article>
       </section>
 
       <section id="sec-custos" class="painel-sec hidden">
-        <article class="glass-card"><h3>Orçamento Mensal &amp; Custos OpenRouter ($)</h3><div class="progress-track"><div id="orcamento-bar" class="progress-fill"></div></div><p id="orcamento-detalhe" class="small muted">Carregando orçamento...</p></article>
+        <article class="glass-card stack-sm">
+          <div class="row-between"><h3>Orçamento Mensal &amp; Custos OpenRouter ($)</h3><span id="custos-periodo-badge" class="badge">Mês atual</span></div>
+          <div id="custos-kpis-grid" class="kpis-grid"></div>
+          <div class="progress-track"><div id="orcamento-bar" class="progress-fill"></div></div>
+          <p id="orcamento-detalhe" class="small muted">Carregando orçamento...</p>
+        </article>
       </section>
 
       <section id="sec-config" class="painel-sec hidden">
-        <article class="glass-card">
-          <h3>Persona &amp; Modelos da Conta</h3>
+        <article class="glass-card stack-sm">
+          <h3>Persona, Modelos &amp; Brand Bible</h3>
           <form id="form-config-ia" class="stack-sm">
-            <div class="row-actions"><label>Marca <input name="marca" type="text" /></label><label>Nicho <input name="nicho" type="text" /></label><label>Região <input name="regiao" type="text" /></label><label>Tom de Voz <input name="tom_voz" type="text" /></label></div>
-            <div class="row-actions"><label>Público-Alvo <input name="publico_alvo" type="text" /></label><label>CTA Padrão <input name="cta_padrao" type="text" /></label><label>Restrições <input name="restricoes" type="text" /></label></div>
-            <div class="row-actions"><label>Modelo Texto <input name="modelo_texto_pref" type="text" required /></label><label>Modelo Imagem <input name="modelo_img_pref" type="text" required /></label></div>
-            <label class="check small"><input name="aplicar_logo_padrao" type="checkbox" /> Aplicar logo padrão nas artes IA</label>
-            <label>Templates JSON da Conta <textarea name="templates_json" rows="4" placeholder='{"carrossel": "capa + 4 passos + cta"}'></textarea></label>
-            <label>Brand Bible JSON da Conta <textarea name="brand_bible_json" rows="5" placeholder="{}"></textarea></label>
-            <div class="row-actions">
-              <button type="submit" class="btn-primary">Salvar Config &amp; Brand Bible</button>
-              <button id="btn-compilar-bible-zero" type="button" class="btn-outline">⚡ Compilar Brand Bible ($0)</button>
-              <button id="btn-compilar-bible-ia" type="button" class="btn-ghost">✨ Enriquecer Brand Bible (IA)</button>
+            <div class="config-grid-campos">
+              <label>Marca <input name="marca" type="text" /></label><label>Nicho <input name="nicho" type="text" /></label>
+              <label>Região <input name="regiao" type="text" /></label><label>Tom de Voz <input name="tom_voz" type="text" /></label>
+              <label>Público-Alvo <input name="publico_alvo" type="text" /></label><label>CTA Padrão <input name="cta_padrao" type="text" /></label>
+              <label class="config-span-2">Restrições <input name="restricoes" type="text" /></label>
             </div>
+            <div class="config-grid-2"><label>Modelo Texto <input name="modelo_texto_pref" type="text" required /></label><label>Modelo Imagem <input name="modelo_img_pref" type="text" required /></label></div>
+            <label class="switch small"><input name="aplicar_logo_padrao" type="checkbox" /><span>Aplicar logo padrão nas artes IA</span></label>
+            <div class="config-json-grid">
+              <label><span class="json-label-txt">Templates JSON da Conta</span><textarea name="templates_json" rows="6" placeholder='{"carrossel": "capa + 4 passos + cta"}'></textarea></label>
+              <label><span class="json-label-txt">Brand Bible JSON da Conta</span><textarea name="brand_bible_json" rows="6" placeholder="{}"></textarea></label>
+            </div>
+            <div class="row-actions"><button type="submit" class="btn-primary">Salvar Config &amp; Brand Bible</button><button id="btn-compilar-bible-zero" type="button" class="btn-outline">Compilar Brand Bible ($0)</button><button id="btn-compilar-bible-ia" type="button" class="btn-ghost">Enriquecer Brand Bible (IA)</button></div>
           </form>
         </article>
       </section>
@@ -174,7 +175,6 @@
               <button type="submit" class="btn-primary">Salvar Credenciais no Banco (Fernet)</button>
             </form>
           </article>
-
           <article class="glass-card">
             <h3>Guia Passo a Passo: Meta for Developers</h3>
             <ol class="guia-lista small">
@@ -183,13 +183,12 @@
               <li>Em <strong>Instagram &gt; Configuração da API com login do Instagram</strong>, adicione sua conta profissional como Testadora e clique em <strong>Gerar Token</strong> (permissões <code>instagram_business_basic</code> e <code>instagram_business_content_publish</code>).</li>
               <li>Copie o <strong>IG User ID</strong> (<code>1784...</code>) ao lado da conta e o <strong>Access Token</strong> gerado e salve no formulário ao lado.</li>
             </ol>
-            <button id="btn-conectar-meta-aba" type="button" class="btn-outline">↗ Iniciar Fluxo OAuth Meta em Nova Aba</button>
+            <button id="btn-conectar-meta-aba" type="button" class="btn-outline">Iniciar Fluxo OAuth Meta em Nova Aba</button>
           </article>
         </div>
       </section>
     </main>
   </div>
-
   <script type="module" src="/painel/js/app.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 import { apiFetch, apiJson } from "/painel/js/api.js";
-import { notificar } from "/painel/js/dom.js";
+import { limpar, notificar } from "/painel/js/dom.js";
+import { criarIcone, iconeTexto } from "/painel/js/icones.js";
 
 const estadoCaptcha = { habilitado: false, siteKey: "", tokens: { login: "", registro: "" } };
 
@@ -34,16 +35,28 @@ async function inicializarTurnstile() {
   }
 }
 
+function atualizarBotaoTema(btn, tema) {
+  if (!btn) return;
+  limpar(btn);
+  const escuro = tema === "dark";
+  const dica = escuro ? "Alternar para tema claro" : "Alternar para tema escuro";
+  btn.setAttribute("title", dica);
+  btn.setAttribute("aria-label", dica);
+  btn.appendChild(criarIcone(escuro ? "sun" : "moon", { tamanho: 16 }));
+}
+
 export function configurarTema() {
   const salvo = localStorage.getItem("tema") || "dark";
   document.documentElement.setAttribute("data-theme", salvo);
+  const btns = [document.getElementById("btn-tema-auth"), document.getElementById("btn-tema-app")];
+  for (const btn of btns) atualizarBotaoTema(btn, salvo);
   const alternar = () => {
     const atual = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", atual);
     localStorage.setItem("tema", atual);
+    for (const btn of btns) atualizarBotaoTema(btn, atual);
   };
-  document.getElementById("btn-tema-auth")?.addEventListener("click", alternar);
-  document.getElementById("btn-tema-app")?.addEventListener("click", alternar);
+  for (const btn of btns) btn?.addEventListener("click", alternar);
 }
 
 export function inicializarAuth(aoAutenticar, aoDeslogar) {
@@ -98,10 +111,16 @@ export function inicializarAuth(aoAutenticar, aoDeslogar) {
     }
   });
 
-  document.getElementById("btn-logout")?.addEventListener("click", async () => {
-    await apiFetch("/auth/logout", { method: "POST" }).catch(() => null);
-    aoDeslogar();
-  });
+  const btnLogout = document.getElementById("btn-logout");
+  if (btnLogout) {
+    limpar(btnLogout);
+    btnLogout.classList.add("btn-inline-icone");
+    btnLogout.append(...iconeTexto("logout", "Sair", { tamanho: 15 }));
+    btnLogout.addEventListener("click", async () => {
+      await apiFetch("/auth/logout", { method: "POST" }).catch(() => null);
+      aoDeslogar();
+    });
+  }
 
   inicializarTurnstile();
 }
