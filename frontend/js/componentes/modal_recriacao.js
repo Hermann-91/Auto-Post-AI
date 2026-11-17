@@ -1,6 +1,12 @@
-import { apiFetch, apiJson } from "/painel/js/api.js";
+import { apiFetch, apiJson, executarJobIA } from "/painel/js/api.js";
 import { criarSeletorMidiaIA, PRESETS_MELHORIA } from "/painel/js/componentes/seletor_midia_ia.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
+
+const RAPIDOS_MODAL = [
+  ["Mais natural", "Deixar a fotografia mais natural e documental, sem aspecto artificial."],
+  ["Sem pessoas", "Remover pessoas da cena mantendo o foco no ambiente e nos objetos."],
+  ["Trocar ângulo", "Recriar a foto com outro ângulo e enquadramento distinto."],
+];
 
 function criarBaseModal(titulo) {
   const backdrop = el("div", { className: "modal-backdrop", role: "dialog", "aria-modal": "true" });
@@ -96,15 +102,20 @@ export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, pro
   const btnRecriar = el("button", { type: "button", className: "btn-primary", text: "✨ Recriar com IA" });
   const btnCancelar = el("button", { type: "button", className: "btn-ghost", text: "Cancelar" });
   btnCancelar.addEventListener("click", fechar);
-  btnRecriar.addEventListener("click", async () => {
+  const executarRecriacao = async (ctxManual = null) => {
     btnRecriar.setAttribute("disabled", "disabled");
     btnRecriar.textContent = "Recriando...";
     try {
-      await apiJson(`/posts/${contaId}/${post.id}/recriar`, "POST", {
-        alvo,
-        contexto_adicional: txtCtx.value.trim(),
-        presets_melhoria: [...presets],
-        midia_base_id: ehImagem && editarAtual && midiaAtual ? midiaAtual.id : null,
+      await executarJobIA({
+        contaId, tipoJob: "RECRIAR_POSTAGEM", chaveIdempotencia: `mod-${post.id}-${alvo}-${Date.now()}`,
+        payload: {
+          recriar_postagem: {
+            postagem_id: post.id, alvo,
+            contexto_adicional: (ctxManual ?? txtCtx.value).trim(),
+            presets_melhoria: [...presets],
+            midia_base_id: ehImagem && editarAtual && midiaAtual ? midiaAtual.id : null,
+          },
+        },
       });
       notificar(`${ehImagem ? "Imagem" : "Legenda"} recriada com Cultura RAG!`);
       fechar();
@@ -114,7 +125,16 @@ export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, pro
       btnRecriar.removeAttribute("disabled");
       btnRecriar.textContent = "✨ Recriar com IA";
     }
-  });
+  };
+  if (ehImagem) {
+    const barraRapidos = el("div", { className: "row-actions" }, RAPIDOS_MODAL.map(([lbl, ctx]) => {
+      const b = el("button", { type: "button", className: "btn-outline btn-sm", text: lbl });
+      b.addEventListener("click", () => executarRecriacao(ctx));
+      return b;
+    }));
+    card.appendChild(barraRapidos);
+  }
+  btnRecriar.addEventListener("click", () => executarRecriacao());
   card.appendChild(el("div", { className: "row-actions" }, [btnRecriar, btnCancelar]));
 }
 
@@ -122,11 +142,12 @@ export function abrirModalTrocarFoto({ post, contaId, aoConcluir }) {
   const { card, fechar } = criarBaseModal("📷 Substituir Foto / Mídia do Card");
   const boxSeletor = el("div", { className: "seletor-midia-box" });
   card.appendChild(boxSeletor);
+  const ehCarrossel = post.tipo_midia === "CAROUSEL";
 
   const seletor = criarSeletorMidiaIA({
     containerEl: boxSeletor,
     obterContaAtiva: () => contaId,
-    multiplo: false,
+    multiplo: ehCarrossel,
     permitirModoIA: false,
   });
 
@@ -136,9 +157,10 @@ export function abrirModalTrocarFoto({ post, contaId, aoConcluir }) {
   btnAplicar.addEventListener("click", async () => {
     const { midiaIdsSelecionadas } = seletor.obterEstado();
     if (!midiaIdsSelecionadas.length) return notificar("Selecione ou envie uma foto primeiro.", "erro");
+    if (ehCarrossel && midiaIdsSelecionadas.length < 2) return notificar("Carrossel exige entre 2 e 10 mídias.", "erro");
     btnAplicar.setAttribute("disabled", "disabled");
     try {
-      await apiJson(`/posts/${contaId}/${post.id}/midia`, "PATCH", { nova_midia_id: midiaIdsSelecionadas[0] });
+      await apiJson(`/posts/${contaId}/${post.id}/midias`, "PATCH", { midia_ids: midiaIdsSelecionadas });
       notificar("Mídia do card atualizada!");
       fechar();
       await aoConcluir();

@@ -1,12 +1,21 @@
 import { apiFetch, apiJson } from "/painel/js/api.js";
-import { el, limpar, notificar } from "/painel/js/dom.js";
+import { notificar } from "/painel/js/dom.js";
+
+function parsearJsonObjeto(bruto, nomeCampo) {
+  const txt = String(bruto || "").trim();
+  if (!txt) return {};
+  const obj = JSON.parse(txt);
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error(`${nomeCampo} deve ser um objeto JSON válido ({...}).`);
+  }
+  return obj;
+}
 
 export async function carregarConfigECustos(contaId) {
   if (!contaId) return;
-  const [orc, cfg, fontes] = await Promise.all([
+  const [orc, cfg] = await Promise.all([
     apiFetch(`/contas/${contaId}/orcamento`),
     apiFetch(`/contas/${contaId}/ia-config`),
-    apiFetch(`/contas/${contaId}/rag`),
   ]);
 
   const bar = document.getElementById("orcamento-bar");
@@ -22,34 +31,16 @@ export async function carregarConfigECustos(contaId) {
     const p = cfg.persona_json || {};
     form.elements.marca.value = p.marca || "";
     form.elements.nicho.value = p.nicho || "";
+    form.elements.regiao.value = p.regiao || "";
     form.elements.tom_voz.value = p.tom_voz || "";
+    form.elements.publico_alvo.value = p.publico_alvo || "";
+    form.elements.cta_padrao.value = p.cta_padrao || "";
+    form.elements.restricoes.value = p.restricoes || "";
     form.elements.modelo_texto_pref.value = cfg.modelo_texto_pref || "";
     form.elements.modelo_img_pref.value = cfg.modelo_img_pref || "";
-  }
-
-  const boxRag = document.getElementById("lista-rag");
-  if (!boxRag) return;
-  limpar(boxRag);
-  if (!fontes.length) {
-    boxRag.appendChild(el("p", { className: "muted small", text: "Nenhuma fonte RAG indexada." }));
-    return;
-  }
-  for (const f of fontes) {
-    const btnDel = el("button", { type: "button", className: "btn-danger", text: "Excluir" });
-    btnDel.addEventListener("click", async () => {
-      try {
-        await apiFetch(`/contas/${contaId}/rag/${f.id}`, { method: "DELETE" });
-        notificar("Fonte RAG removida.");
-        await carregarConfigECustos(contaId);
-      } catch (err) { notificar(err.message, "erro"); }
-    });
-    boxRag.appendChild(el("div", { className: "item-card row-between" }, [
-      el("div", {}, [
-        el("strong", { text: `[${f.tipo}] ${f.titulo}` }),
-        el("p", { className: "small muted", text: `${f.total_chunks} chunk(s)` }),
-      ]),
-      btnDel,
-    ]));
+    form.elements.aplicar_logo_padrao.checked = Boolean(cfg.aplicar_logo_padrao);
+    form.elements.templates_json.value = JSON.stringify(cfg.templates_json || {}, null, 2);
+    form.elements.brand_bible_json.value = JSON.stringify(cfg.brand_bible_json || {}, null, 2);
   }
 }
 
@@ -114,35 +105,41 @@ export function inicializarConfigECustos(obterContaAtiva, obterContaObj, recarre
     if (!contaId) return;
     const fd = new FormData(e.target);
     try {
-      await apiJson(`/contas/${contaId}/ia-config`, "PUT", {
+      const templates = parsearJsonObjeto(fd.get("templates_json"), "Templates JSON");
+      const brandBible = parsearJsonObjeto(fd.get("brand_bible_json"), "Brand Bible JSON");
+      const salva = await apiJson(`/contas/${contaId}/ia-config`, "PUT", {
         persona_json: {
           marca: String(fd.get("marca") || ""),
           nicho: String(fd.get("nicho") || ""),
+          regiao: String(fd.get("regiao") || ""),
           tom_voz: String(fd.get("tom_voz") || ""),
+          publico_alvo: String(fd.get("publico_alvo") || ""),
+          cta_padrao: String(fd.get("cta_padrao") || ""),
+          restricoes: String(fd.get("restricoes") || ""),
         },
-        templates_json: {},
-        aplicar_logo_padrao: false,
+        templates_json: templates,
+        brand_bible_json: brandBible,
+        aplicar_logo_padrao: Boolean(fd.get("aplicar_logo_padrao")),
         modelo_texto_pref: String(fd.get("modelo_texto_pref") || ""),
         modelo_img_pref: String(fd.get("modelo_img_pref") || ""),
       });
-      notificar("Persona e modelos atualizados.");
+      e.target.elements.brand_bible_json.value = JSON.stringify(salva.brand_bible_json || {}, null, 2);
+      notificar("Configuração, Templates e Brand Bible salvos!");
     } catch (err) { notificar(err.message, "erro"); }
   });
 
-  document.getElementById("form-rag")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  const compilarBible = async (usarIa, btn) => {
     const contaId = obterContaAtiva();
     if (!contaId) return;
-    const fd = new FormData(e.target);
+    btn.setAttribute("disabled", "disabled");
     try {
-      await apiJson(`/contas/${contaId}/rag`, "POST", {
-        tipo: String(fd.get("tipo") || "TEXTO"),
-        titulo: String(fd.get("titulo") || ""),
-        conteudo: String(fd.get("conteudo") || ""),
-      });
-      notificar("Fonte RAG indexada.");
-      e.target.reset();
-      await carregarConfigECustos(contaId);
+      const cfg = await apiJson(`/contas/${contaId}/brand-bible/compilar`, "POST", { usar_ia: usarIa });
+      const form = document.getElementById("form-config-ia");
+      if (form) form.elements.brand_bible_json.value = JSON.stringify(cfg.brand_bible_json || {}, null, 2);
+      notificar(usarIa ? "Brand Bible enriquecida com IA!" : "Brand Bible compilada ($0)!");
     } catch (err) { notificar(err.message, "erro"); }
-  });
+    finally { btn.removeAttribute("disabled"); }
+  };
+  document.getElementById("btn-compilar-bible-zero")?.addEventListener("click", (e) => compilarBible(false, e.currentTarget));
+  document.getElementById("btn-compilar-bible-ia")?.addEventListener("click", (e) => compilarBible(true, e.currentTarget));
 }

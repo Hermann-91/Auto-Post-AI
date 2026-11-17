@@ -22,6 +22,7 @@ from app.api.rotas import (
     contas_config,
     criacao,
     health,
+    jobs_ia,
     meta_oauth,
     midia_publica,
     planejamento,
@@ -116,6 +117,7 @@ def criar_app(config: Configuracoes | None = None) -> FastAPI:
         try:
             yield
         finally:
+            await ia_container.fechar()
             await container.fechar()
 
     aplicacao = FastAPI(
@@ -143,6 +145,7 @@ def criar_app(config: Configuracoes | None = None) -> FastAPI:
     aplicacao.include_router(contas_config.router)
     aplicacao.include_router(criacao.router)
     aplicacao.include_router(planejamento.router)
+    aplicacao.include_router(jobs_ia.router)
     aplicacao.include_router(meta_oauth.router)
     aplicacao.include_router(posts.router)
     aplicacao.include_router(biblioteca.router)

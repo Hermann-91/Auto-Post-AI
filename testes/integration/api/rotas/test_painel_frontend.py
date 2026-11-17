@@ -30,7 +30,10 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
         html = await cli.get("/painel/")
         assert html.status_code == 200 and "Robo-Auto-Inst" in html.text
         assert "sec-conta-meta" in html.text and "Meta for Developers" in html.text
-        assert "abas-contas-dinamicas" in html.text and "seletor-midia-semanal" in html.text
+        assert "abas-contas-dinamicas" in html.text and "estudio-unificado-root" in html.text
+        assert "job-status-box" in html.text and "rag-painel-root" in html.text
+        assert "templates_json" in html.text and "brand_bible_json" in html.text
+        assert "form-propor-plano" not in html.text and "form-criar-ia" not in html.text
         assert "https://challenges.cloudflare.com" in html.headers["content-security-policy"]
 
         js_app = await cli.get("/painel/js/app.js")
@@ -39,11 +42,17 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
         assert js_app.status_code == 200 and css_main.status_code == 200 and "_blank" in js_cfg.text
         for rota in (
             "/painel/css/agenda.css", "/painel/js/planejamento.js",
+            "/painel/js/rag.js",
+            "/painel/js/componentes/estudio_unificado.js",
             "/painel/js/componentes/seletor_midia_ia.js",
             "/painel/js/componentes/resumo_orcamento.js",
             "/painel/js/componentes/modal_recriacao.js", "/painel/js/componentes/card_agenda.js",
         ):
             assert (await cli.get(rota)).status_code == 200
+        estudio_js = (await cli.get("/painel/js/componentes/estudio_unificado.js")).text
+        card_js = (await cli.get("/painel/js/componentes/card_agenda.js")).text
+        assert "MANUAL_ZERO" in estudio_js and "SO_TEXTO" in estudio_js
+        assert "Aguardando mídia" in card_js and "Mais natural" in card_js
 
         pub = await cli.get("/auth/config")
         assert pub.status_code == 200

@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from "/painel/js/api.js";
+import { apiJson, executarJobIA } from "/painel/js/api.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
 
 const FORMATOS = ["IMAGE", "CAROUSEL", "REELS", "STORIES"];
@@ -54,7 +54,7 @@ function criarLinhaEditavelPlano(item, editavel, contaId, midiaPorId) {
   ]);
 }
 
-export function renderizarResumoSemanal({ container, planos, contaId, midiaPorId, planoSelecionadoId, aoAtualizar }) {
+export function renderizarResumoSemanal({ container, planos, contaId, midiaPorId, planoSelecionadoId, aoAtualizar, aoExecutarPlano = null }) {
   if (!container) return;
   limpar(container);
   if (!planos.length) {
@@ -85,6 +85,17 @@ export function renderizarResumoSemanal({ container, planos, contaId, midiaPorId
   const lista = el("div", { className: "stack-sm" }, itensEditados.map((it) => criarLinhaEditavelPlano(it, editavel, contaId, midiaPorId)));
   container.appendChild(lista);
 
+  const dispararExecucao = async (btn) => {
+    if (aoExecutarPlano) return aoExecutarPlano(plano, editavel ? itensEditados : null, btn);
+    btn.setAttribute("disabled", "disabled");
+    try {
+      if (editavel) await apiJson(`/planejamento/${contaId}/${plano.id}/itens`, "PATCH", { itens_grade: itensEditados });
+      const job = await executarJobIA({ contaId, tipoJob: "EXECUTAR_PLANO", payload: { executar_plano: { plano_id: plano.id } }, chaveIdempotencia: `exec-${plano.id}-${Date.now()}` });
+      notificar(`Concluído! ${(job.resultado_json?.postagens_criadas || []).length} post(s) na Agenda.`);
+      await aoAtualizar(plano.id);
+    } catch (err) { notificar(err.message, "erro"); }
+    finally { btn.removeAttribute("disabled"); }
+  };
   const acoes = [];
   if (editavel) {
     const btnSalvar = el("button", { type: "button", className: "btn-outline", text: "💾 Salvar Ajustes" });
@@ -96,30 +107,11 @@ export function renderizarResumoSemanal({ container, planos, contaId, midiaPorId
       } catch (err) { notificar(err.message, "erro"); }
     });
     const btnConcluir = el("button", { type: "button", className: "btn-primary", text: "✅ Aprovar & Concluir p/ Agenda" });
-    btnConcluir.addEventListener("click", async () => {
-      btnConcluir.setAttribute("disabled", "disabled");
-      try {
-        await apiJson(`/planejamento/${contaId}/${plano.id}/itens`, "PATCH", { itens_grade: itensEditados });
-        if (plano.status === "AGUARDANDO_APROVACAO") {
-          await apiFetch(`/planejamento/${contaId}/${plano.id}/aprovar`, { method: "POST" });
-        }
-        const res = await apiFetch(`/planejamento/${contaId}/${plano.id}/executar`, { method: "POST" });
-        notificar(`Concluído! ${res.postagens_criadas.length} post(s) enviados à Agenda ($${res.custo_real_usd} USD).`);
-        await aoAtualizar(plano.id);
-      } catch (err) {
-        notificar(err.message, "erro");
-      } finally { btnConcluir.removeAttribute("disabled"); }
-    });
+    btnConcluir.addEventListener("click", () => dispararExecucao(btnConcluir));
     acoes.push(btnSalvar, btnConcluir);
   } else {
     const btnRegerar = el("button", { type: "button", className: "btn-outline", text: "🔄 Gerar Fotos & Rascunhos Novamente" });
-    btnRegerar.addEventListener("click", async () => {
-      try {
-        const res = await apiFetch(`/planejamento/${contaId}/${plano.id}/executar`, { method: "POST" });
-        notificar(`${res.postagens_criadas.length} post(s) adicionados à Agenda ($${res.custo_real_usd} USD).`);
-        await aoAtualizar(plano.id);
-      } catch (err) { notificar(err.message, "erro"); }
-    });
+    btnRegerar.addEventListener("click", () => dispararExecucao(btnRegerar));
     acoes.push(btnRegerar);
   }
   container.appendChild(el("div", { className: "row-actions" }, acoes));

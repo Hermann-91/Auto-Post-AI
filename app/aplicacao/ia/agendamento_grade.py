@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
@@ -107,6 +108,7 @@ async def executar_itens_grade(
     criador: CriarConteudoUseCase,
     auto_agendar: bool | None = None,
     fuso_horario: str | None = None,
+    ao_progredir: Callable[[int, int, str], Awaitable[None]] | None = None,
 ) -> tuple[list[Postagem], list[str], Decimal]:
     """Executa itens da grade semanal e aplica auto-agendamento UTC quando habilitado."""
     cfg_plano = plano.tendencias_cache.get("_config_plano") or {}
@@ -118,9 +120,13 @@ async def executar_itens_grade(
     postagens: list[Postagem] = []
     falhas: list[str] = []
     custo_real = Decimal("0")
+    total = len(plano.itens_grade)
 
     for idx, item in enumerate(plano.itens_grade, start=1):
         try:
+            if ao_progredir is not None:
+                tema = str(item.get("tema") or f"Item {idx}")[:50]
+                await ao_progredir(idx - 1, total, f"Gerando item {idx}/{total}: {tema}")
             dt_utc = (
                 calcular_agendado_para_utc(plano.semana_inicio, item, fuso_efetivo, idx)
                 if agendar_ativo
@@ -139,5 +145,7 @@ async def executar_itens_grade(
                     )
         except ErroDominio as exc:
             falhas.append(f"Item {item.get('ordem', '?')}: {exc}")
+        if ao_progredir is not None:
+            await ao_progredir(idx, total, f"Concluído item {idx}/{total}")
 
     return postagens, falhas, custo_real

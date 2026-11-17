@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from uuid import UUID
 
@@ -143,6 +144,7 @@ class PlanejamentoSemanalUseCase:
         plano_id: UUID,
         auto_agendar: bool | None = None,
         fuso_horario: str | None = None,
+        ao_progredir: Callable[[int, int, str], Awaitable[None]] | None = None,
     ) -> ResultadoExecucaoPlanoDTO:
         """Etapa 2b: executa os itens aprovados gerando mídias IA e rascunhos."""
         plano = await self.obter_plano(empresa_id, conta_ig_id, plano_id)
@@ -155,7 +157,7 @@ class PlanejamentoSemanalUseCase:
         await self._plano_repo.salvar(plano)
 
         postagens, falhas, custo_real = await executar_itens_grade(
-            plano, self._criador, auto_agendar, fuso_horario
+            plano, self._criador, auto_agendar, fuso_horario, ao_progredir=ao_progredir
         )
 
         if falhas and not postagens and custo_real == Decimal("0"):

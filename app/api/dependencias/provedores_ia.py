@@ -15,6 +15,7 @@ from app.aplicacao.ia import (
     PlanejamentoSemanalUseCase,
     RecriarPostagemContextoUseCase,
     ServicoCuradoriaVisualUseCase,
+    ServicoJobsIAUseCase,
     ServicoOrcamentoUseCase,
     ServicoPromptsRagUseCase,
 )
@@ -121,4 +122,22 @@ def obter_recriar_post_uc(
         c.config_ia_repo, c.midia_repo, c.post_repo, c.cliente_ia,
         orcamento, prompts_rag, _criar_gerador_visual(c, orcamento),
         diretor_arte=DiretorArteService(c.cliente_ia, orcamento),
+    )
+
+
+def obter_jobs_ia_uc(
+    c: Annotated[ContainerIA, Depends(obter_container_ia)],
+    prompts_rag: Annotated[ServicoPromptsRagUseCase, Depends(obter_prompts_rag_uc)],
+    criador: Annotated[CriarConteudoUseCase, Depends(obter_criar_conteudo_uc)],
+    planejamento: Annotated[PlanejamentoSemanalUseCase, Depends(obter_planejamento_uc)],
+    edicao: Annotated[EdicaoOrcamentoSemanalUseCase, Depends(obter_edicao_orcamento_uc)],
+    recriar: Annotated[RecriarPostagemContextoUseCase, Depends(obter_recriar_post_uc)],
+) -> ServicoJobsIAUseCase:
+    return ServicoJobsIAUseCase(
+        store=c.jobs_store,
+        prompts_rag=prompts_rag,
+        criar_conteudo=criador,
+        planejamento=planejamento,
+        edicao_orcamento=edicao,
+        recriar_post=recriar,
     )

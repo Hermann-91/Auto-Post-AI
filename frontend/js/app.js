@@ -4,6 +4,7 @@ import { carregarBiblioteca, inicializarBiblioteca } from "/painel/js/biblioteca
 import { carregarConfigECustos, inicializarConfigECustos, preencherFormConta } from "/painel/js/config_custos.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
 import { carregarPlanejamentoEPosts, inicializarPlanejamento } from "/painel/js/planejamento.js";
+import { carregarRag, inicializarRag } from "/painel/js/rag.js";
 
 const estado = { contaAtivaId: "", contas: [] };
 const obterContaAtiva = () => estado.contaAtivaId;
@@ -51,6 +52,7 @@ async function carregarDadosContaAtiva() {
       carregarBiblioteca(estado.contaAtivaId),
       carregarPlanejamentoEPosts(estado.contaAtivaId),
       carregarConfigECustos(estado.contaAtivaId),
+      carregarRag(estado.contaAtivaId),
     ]);
   } catch (err) {
     notificar(err.message, "erro");
@@ -117,6 +119,7 @@ configurarNavegacao();
 inicializarAuth(mostrarApp, mostrarLogin);
 inicializarBiblioteca(obterContaAtiva);
 inicializarPlanejamento(obterContaAtiva);
+inicializarRag(obterContaAtiva);
 inicializarConfigECustos(
   obterContaAtiva,
   obterContaAtivaObj,

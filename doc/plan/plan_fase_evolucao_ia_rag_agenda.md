@@ -25,9 +25,9 @@
 - [x] **Fase 3: Visão em Fotos Anexadas, Rascunho Só-Texto, Auto-Agendamento & Worker Resiliente**
   - Status: Concluído
   - Commit: `feat(agenda): visao em fotos anexadas, rascunho texto-primeiro, auto-agendamento e worker resiliente`
-- [ ] **Fase 4: Jobs Assíncronos & Estúdio Unificado Zero-Prompt no Painel Web**
-  - Status: Pendente
-  - Commit: `pendente`
+- [x] **Fase 4: Jobs Assíncronos & Estúdio Unificado Zero-Prompt no Painel Web**
+  - Status: Concluído
+  - Commit: `feat(ui): jobs assincronos e estudio unificado zero-prompt com rag de arquivos/urls`
 - [ ] **Fase Final: Auditoria, Revisão Geral & Hardening**
   - Status: Pendente
   - Commit: `pendente`
@@ -132,3 +132,10 @@
   - Porta segregada `ClienteVisaoMultimodalPort` (`ia_meta.py`) implementada em `ClienteOpenRouter`/`ClienteIANaoConfigurado` via `montar_payload_visao`; `ServicoCuradoriaVisualUseCase.eleger_melhor_foto` compara até 5 imagens isoladas por conta (exposto em `POST /ia/curadoria/{conta_ig_id}/eleger-melhor`).
   - `visao_conteudo.py` envia miniatura compactada `<= 1024px` de `midia_base_ids` em `CriarConteudoUseCase` (gerando legenda guiada pela foto real e `horario_sugerido`) e libera rascunhos só-texto (`salvar_rascunho=True`); rota `PATCH /posts/{conta_ig_id}/{postagem_id}/midias` anexa 1..10 mídias depois.
   - `agendamento_grade.py`, `grade_semanal.py`, `planejamento_semanal.py`, `servico_orcamento.py` e `edicao_orcamento_semanal.py` corrigem criação de rascunhos só-texto na semana, suportam `composicao_formatos` dinâmica, recalculam orçamento por formato/visão e convertem `auto_agendar=True` para UTC real a partir de `America/Sao_Paulo` (ou `fuso_horario` IANA opcional). Quality Gate: 158/158 testes verdes, `ruff` e `mypy --strict` limpos e todos os arquivos `<= 200` linhas.
+- **Fase 4 concluída em 2026-11-16 23:02:**
+  - `JobIA` (`app/dominio/entidades/job_ia.py`), `JobIAStore` (`app/aplicacao/ia/jobs_store.py`) e `ServicoJobsIAUseCase` (`app/aplicacao/ia/servico_jobs.py`) implementam jobs assíncronos isolados por `(empresa_id, conta_ig_id)` com retenção limitada (`500` itens), serialização desacoplada da camada API, progresso `X/Y` em tempo real via callback `ao_progredir` em `agendamento_grade.py`/`planejamento_semanal.py`, cancelamento limpo no shutdown do `ContainerIA` e idempotência por `chave_idempotencia` abrangendo jobs ativos e recém-concluídos (`status != FALHA`).
+  - Rotas `POST /ia/jobs`, `GET /ia/jobs` e `GET /ia/jobs/{job_id}` (`app/api/rotas/jobs_ia.py` + `app/api/schemas/jobs_ia.py`) registradas em `app/main.py` e ligadas em `provedores_ia.py`.
+  - Painel Web unificado em `frontend/index.html`, `frontend/js/componentes/estudio_unificado.js`, `frontend/js/planejamento.js`, `frontend/js/componentes/resumo_orcamento.js` e `frontend/js/api.js`: modos **Só Texto**, **IA Completa** e **Manual $0**, construtor dinâmico de quantidades (`IMAGE`/`CAROUSEL`/`REELS`/`STORIES`), chips de Pilares, Modo Série, bloco recolhível **Prompt Avançado Opcional**, barra de progresso de job com `AbortSignal` na troca de conta e bloqueio contra duplo clique.
+  - `card_agenda.js` e `modal_recriacao.js` atualizados com badge *"Aguardando mídia"*, ações diretas *"Gerar Imagem IA"* / *"Anexar Foto"* (inclusive multi-seleção para `CAROUSEL` via `PATCH /midias`), botões rápidos de 1 clique (`"Mais natural"`, `"Sem pessoas"`, `"Trocar ângulo"`) via job e bloqueio de agendamento/publicação sem mídia.
+  - `frontend/js/rag.js` e `frontend/js/config_custos.js` habilitam upload multipart (`.pdf`, `.txt`, `.md`), indexação de URL/Benchmark, visualização com resumo/embeddings e edição/compilação de `templates_json` e `brand_bible_json` por conta.
+  - Quality Gate: `163/163` testes verdes (`pytest testes/ -v`), `ruff` e `mypy --strict` (`249` arquivos) limpos e 100% dos arquivos da Fase 4 `<= 200` linhas. *(Ponto anotado para a Fase Final de Auditoria: dividir `testes/unit/aplicacao/ia/test_edicao_e_recriacao_agenda.py`, herdado da Fase 3 com 255 linhas.)*

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from app.api.dependencias.container_auth import ContainerAuth
+from app.aplicacao.ia.jobs_store import JobIAStore
 from app.core.config import Configuracoes
 from app.dominio.portas.ia_meta import (
     ClienteEmbeddingsPort,
@@ -78,6 +79,10 @@ class ContainerIA:
     extrator_rag: ExtratorConteudoRagPort
     tendencias: PesquisaTendenciasPort
     pipeline_midia: FabricaEstrategiasMidia
+    jobs_store: JobIAStore
+
+    async def fechar(self) -> None:
+        await self.jobs_store.cancelar_tarefas_ativas()
 
 
 def _montar_cliente_openrouter(
@@ -157,4 +162,5 @@ def construir_container_ia(config: Configuracoes, auth: ContainerAuth) -> Contai
         extrator_rag=extrator,
         tendencias=PesquisaTendenciasAdapter(cache=cache_tend, buscador=buscador),
         pipeline_midia=FabricaEstrategiasMidia(),
+        jobs_store=JobIAStore(),
     )
