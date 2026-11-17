@@ -140,7 +140,7 @@ export function criarSeletorMidiaIA({ idContainer, containerEl = null, obterCont
         btnLimpar,
       ]));
     }
-    if (permitirModoIA) {
+    if (permitirModoIA || mostrarLogo) {
       const painel = montarPainelMelhoria(estado, mostrarLogo, notificarMudanca);
       if (painel) raiz.appendChild(painel);
     }

@@ -31,12 +31,18 @@ def test_montar_payload_imagem_deduplica_e_valida_ssrf() -> None:
     assert conteudo[1]["image_url"]["url"].startswith("data:image/jpeg")
     assert conteudo[2]["image_url"]["url"] == "https://cdn.exemplo.com/foto2.jpg"
 
-    with pytest.raises(ErroValidacaoDominio):
-        montar_payload_imagem(
-            prompt="Teste SSRF",
-            modelo="google/gemini-3.1-flash-image",
-            imagens_referencia_urls=["http://127.0.0.1/interno.jpg"],
-        )
+    for url_ruim in (
+        "http://127.0.0.1/interno.jpg",
+        "https://127.0.0.1/interno.jpg",
+        "https://169.254.169.254/latest/meta-data",
+        "https://localhost:8443/segredo.jpg",
+        "https://user:pass@cdn.exemplo.com/foto.jpg",
+    ):
+        with pytest.raises(ErroValidacaoDominio):
+            montar_payload_imagem(
+                prompt="Teste SSRF", modelo="google/gemini-3.1-flash-image",
+                imagens_referencia_urls=[url_ruim],
+            )
 
 
 async def test_cliente_openrouter_envia_multiplas_referencias_reais() -> None:

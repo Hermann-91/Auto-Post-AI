@@ -69,7 +69,7 @@ class ClienteOpenRouter:
     ) -> httpx.Response:
         if self._http_client is not None:
             return await self._http_client.request(metodo, url, headers=headers, json=payload)
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
+        async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=False) as client:
             return await client.request(metodo, url, headers=headers, json=payload)
 
     async def _requisitar(

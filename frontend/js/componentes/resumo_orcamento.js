@@ -70,7 +70,7 @@ export function renderizarResumoSemanal({ container, planos, contaId, midiaPorId
       return opt;
     }));
     sel.addEventListener("change", () =>
-      renderizarResumoSemanal({ container, planos, contaId, midiaPorId, planoSelecionadoId: sel.value, aoAtualizar })
+      renderizarResumoSemanal({ container, planos, contaId, midiaPorId, planoSelecionadoId: sel.value, aoAtualizar, aoExecutarPlano })
     );
     container.appendChild(sel);
   }

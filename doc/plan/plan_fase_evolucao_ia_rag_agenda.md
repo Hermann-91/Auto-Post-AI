@@ -28,9 +28,9 @@
 - [x] **Fase 4: Jobs Assíncronos & Estúdio Unificado Zero-Prompt no Painel Web**
   - Status: Concluído
   - Commit: `feat(ui): jobs assincronos e estudio unificado zero-prompt com rag de arquivos/urls`
-- [ ] **Fase Final: Auditoria, Revisão Geral & Hardening**
-  - Status: Pendente
-  - Commit: `pendente`
+- [x] **Fase Final: Auditoria, Revisão Geral & Hardening**
+  - Status: Concluído
+  - Commit: `refactor(audit): revisao geral, limpeza de codigo e hardening final`
 
 ## 3. Detalhamento de Cada Fase
 
@@ -139,3 +139,8 @@
   - `card_agenda.js` e `modal_recriacao.js` atualizados com badge *"Aguardando mídia"*, ações diretas *"Gerar Imagem IA"* / *"Anexar Foto"* (inclusive multi-seleção para `CAROUSEL` via `PATCH /midias`), botões rápidos de 1 clique (`"Mais natural"`, `"Sem pessoas"`, `"Trocar ângulo"`) via job e bloqueio de agendamento/publicação sem mídia.
   - `frontend/js/rag.js` e `frontend/js/config_custos.js` habilitam upload multipart (`.pdf`, `.txt`, `.md`), indexação de URL/Benchmark, visualização com resumo/embeddings e edição/compilação de `templates_json` e `brand_bible_json` por conta.
   - Quality Gate: `163/163` testes verdes (`pytest testes/ -v`), `ruff` e `mypy --strict` (`249` arquivos) limpos e 100% dos arquivos da Fase 4 `<= 200` linhas. *(Ponto anotado para a Fase Final de Auditoria: dividir `testes/unit/aplicacao/ia/test_edicao_e_recriacao_agenda.py`, herdado da Fase 3 com 255 linhas.)*
+- **Fase Final concluída em 2026-11-16 23:12:**
+  - Auditoria acumulada (`983ccc5..254dcd9`) concluída: `test_edicao_e_recriacao_agenda.py` (255 linhas) fatiado com `test_recriar_postagem_contexto.py` (100% dos `.py/.js/.css/.html` do repositório `<= 200` linhas).
+  - Hardening anti-SSRF & Path Traversal: `validar_url_publica_sincrona` compartilhada em `extrator_html_ssrf.py` e aplicada em `openrouter_parser.py` (`validar_url_imagem`), `follow_redirects=False` explícito em `cliente_openrouter.py`, sanitização cross-platform de `\`/`\x00` + rejeição de redirect sem `Location` e checagem de `Content-Length` em `extrator_rag.py`, e validação de esquema `http`/`https` + bloqueio exato de `instagram.com`/`facebook.com`/`fb.com` em `buscador_web_real.py`.
+  - Correções funcionais & limpeza: preservação de `REELS` e `midia_base_ids` na re-execução de planos em `planejamento_semanal.py`; repasse de `aoExecutarPlano` no `<select>` de `resumo_orcamento.js`; ativação do painel de presets/logo para anexos em `seletor_midia_ia.js`/`estudio_unificado.js`; remoção de 2 listeners órfãos em `config_custos.js`.
+  - Quality Gate final: `163/163` testes verdes (`pytest testes/ -v`), `ruff check .` e `mypy app/ testes/ --strict` (`250` arquivos) limpos e `docker compose config -q` válido.

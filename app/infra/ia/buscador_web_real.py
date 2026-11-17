@@ -39,11 +39,17 @@ def _desembrulhar_url_ddg(href: str) -> str:
     return limpa
 
 
+_DOMINIOS_BLOQUEADOS = ("instagram.com", "facebook.com", "fb.com")
+
+
 def _url_permitida(url: str) -> bool:
     if not url:
         return True
-    dominio = (urlparse(url).hostname or "").lower()
-    return "instagram.com" not in dominio and "facebook.com" not in dominio
+    analisada = urlparse(url.strip())
+    dominio = (analisada.hostname or "").lower().rstrip(".")
+    if analisada.scheme not in {"http", "https"} or not dominio:
+        return False
+    return not any(dominio == b or dominio.endswith(f".{b}") for b in _DOMINIOS_BLOQUEADOS)
 
 
 class _ParserDuckDuckGoHTML(HTMLParser):

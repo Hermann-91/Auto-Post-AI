@@ -151,7 +151,11 @@ class PlanejamentoSemanalUseCase:
         if plano.status in {StatusPlanejamento.CONCLUIDO, StatusPlanejamento.FALHA}:
             plano.status = StatusPlanejamento.APROVADO
             for it in plano.itens_grade:
-                if isinstance(it, dict):
+                if (
+                    isinstance(it, dict)
+                    and str(it.get("formato") or "").upper() != "REELS"
+                    and not it.get("midia_base_ids")
+                ):
                     it["usar_ia_imagem"] = True
         plano.iniciar_execucao()
         await self._plano_repo.salvar(plano)

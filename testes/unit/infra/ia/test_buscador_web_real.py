@@ -16,6 +16,18 @@ async def test_buscador_web_real_parseia_html_desembrulha_url_e_filtra_instagram
       <a class="result__snippet">Nao deve aparecer</a>
     </div>
     <div class="result">
+      <a class="result__a" href="javascript:alert(1)">Link XSS bloqueado</a>
+      <a class="result__snippet">Nao deve aparecer</a>
+    </div>
+    <div class="result">
+      <a class="result__a" href="https://m.fb.com/pagina">Link FB bloqueado</a>
+      <a class="result__snippet">Nao deve aparecer</a>
+    </div>
+    <div class="result">
+      <a class="result__a" href="https://notinstagram.com/guia">Blog permitido</a>
+      <a class="result__snippet">Conteudo editorial valido</a>
+    </div>
+    <div class="result">
       <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.ex.com%2Fcafe">
         Tendencias Cafeteria 2026
       </a>
@@ -30,10 +42,10 @@ async def test_buscador_web_real_parseia_html_desembrulha_url_e_filtra_instagram
         buscador = BuscadorWebReal(http_client=client, max_resultados=4)
         itens = await buscador.buscar("Cafeteria Especial", "Curitiba")
 
-    assert len(itens) == 1
-    assert itens[0]["titulo"] == "Tendencias Cafeteria 2026"
-    assert itens[0]["url"] == "https://blog.ex.com/cafe"
-    assert "Cold brew" in itens[0]["resumo"]
+    assert [i["url"] for i in itens] == [
+        "https://notinstagram.com/guia",
+        "https://blog.ex.com/cafe",
+    ]
 
 
 async def test_buscador_web_real_usa_fallback_rss_e_ignora_xxe() -> None:

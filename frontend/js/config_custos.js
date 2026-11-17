@@ -69,14 +69,12 @@ export function inicializarConfigECustos(obterContaAtiva, obterContaObj, recarre
       notificar("Fluxo OAuth aberto em nova aba.");
     } catch (err) { notificar(err.message, "erro"); }
   };
-  document.getElementById("btn-conectar-meta")?.addEventListener("click", conectar);
   document.getElementById("btn-conectar-meta-vazio")?.addEventListener("click", conectar);
   document.getElementById("btn-conectar-meta-aba")?.addEventListener("click", conectar);
 
   const irParaConfigConta = () => {
     if (ativarSecao) ativarSecao("sec-conta-meta");
   };
-  document.getElementById("btn-abrir-config-conta")?.addEventListener("click", irParaConfigConta);
   document.getElementById("btn-config-conta-vazio")?.addEventListener("click", irParaConfigConta);
 
   document.getElementById("conta-modo-edicao")?.addEventListener("change", () => {

@@ -61,9 +61,10 @@ class ExtratorConteudoRag:
 
     def extrair_arquivo(self, nome_arquivo: str, conteudo_bytes: bytes) -> tuple[str, str]:
         """Extrai título seguro e texto limpo de arquivos .txt, .md ou .pdf."""
-        nome_seguro = Path(nome_arquivo.strip()).name
+        bruto_nome = nome_arquivo.strip().replace("\x00", "").replace("\\", "/")
+        nome_seguro = Path(bruto_nome).name
         extensao = Path(nome_seguro).suffix.lower().lstrip(".")
-        if not nome_seguro or extensao not in _EXTENSOES_PERMITIDAS:
+        if not nome_seguro or nome_seguro in {".", ".."} or extensao not in _EXTENSOES_PERMITIDAS:
             raise ErroValidacaoDominio("Formato não suportado. Envie arquivos .pdf, .txt ou .md.")
         if not conteudo_bytes or len(conteudo_bytes) > self._max_bytes:
             raise ErroValidacaoDominio("Arquivo vazio ou acima do limite permitido para RAG.")
@@ -93,12 +94,15 @@ class ExtratorConteudoRag:
             if resp.status_code in {301, 302, 303, 307, 308}:
                 destino = resp.headers.get("location", "").strip()
                 if not destino:
-                    break
+                    raise ErroValidacaoDominio("Redirecionamento HTTP inválido sem destino.")
                 atual = await validar_url_publica_rag(
                     urljoin(atual, destino), self._resolver_ips
                 )
                 continue
             resp.raise_for_status()
+            tamanho_header = resp.headers.get("content-length", "").strip()
+            if tamanho_header.isdigit() and int(tamanho_header) > self._max_bytes:
+                raise ErroValidacaoDominio("Conteúdo da URL excede o limite de tamanho permitido.")
             return resp
         raise ErroValidacaoDominio("Muitos redirecionamentos ao acessar URL informada.")
 

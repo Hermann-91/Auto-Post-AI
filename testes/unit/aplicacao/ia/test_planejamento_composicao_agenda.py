@@ -165,3 +165,8 @@ async def test_composicao_dinamica_rascunho_so_texto_e_auto_agendar_utc(tmp_path
     esperado = estimar_plano_semanal(atual.itens_grade, "deepseek/deepseek-v4-flash",
                                      "google/gemini-3.1-flash-image")
     assert atual.custo_estimado_usd == esperado and esperado > Decimal("0.0040")
+
+    # 4. Re-execução de plano concluído preserva REELS sem converter para IMAGE
+    reexec = await uc.executar_plano(emp.id, conta.id, proposta.id)
+    assert [p.tipo_midia.value for p in reexec.postagens_criadas] == ["IMAGE", "IMAGE", "REELS"]
+    assert reexec.plano.itens_grade[2]["usar_ia_imagem"] is False

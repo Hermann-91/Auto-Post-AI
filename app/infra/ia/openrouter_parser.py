@@ -7,9 +7,9 @@ import binascii
 from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
 from typing import Any
-from urllib.parse import urlparse
 
 from app.dominio.excecoes import ErroIntegracaoIA, ErroValidacaoDominio
+from app.infra.ia.extrator_html_ssrf import validar_url_publica_sincrona
 
 _QUANTUM_CUSTO = Decimal("0.000001")
 _MAX_IMAGEM_BYTES = 20 * 1024 * 1024
@@ -25,10 +25,10 @@ def validar_url_imagem(url: str) -> str:
     limpa = url.strip()
     if limpa.startswith("data:image/"):
         return limpa
-    analisada = urlparse(limpa)
-    if analisada.scheme == "https" and analisada.netloc:
-        return limpa
-    raise ErroValidacaoDominio("Imagem deve ser data URI (data:image/*) ou URL HTTPS válida.")
+    validada, _, _, _ = validar_url_publica_sincrona(
+        limpa, esquemas=frozenset({"https"}), portas=frozenset({443})
+    )
+    return validada
 
 
 def extrair_usage(dados: dict[str, Any], modelo_solicitado: str) -> dict[str, Any]:

@@ -81,7 +81,11 @@ export function criarEstudioUnificado({ raiz, obterContaAtiva, aoSubmeter }) {
 
   MODOS.forEach(([id, label]) => {
     const btn = el("button", { type: "button", className: "tab-btn small", "data-modo": id, text: label });
-    btn.addEventListener("click", () => { estado.modo = id; atualizarUI(); });
+    btn.addEventListener("click", () => {
+      estado.modo = id;
+      estado.seletor?.definirRestricao({ bloquearIA: id === "MANUAL_ZERO" });
+      atualizarUI();
+    });
     boxModos.appendChild(btn);
   });
 

@@ -87,30 +87,44 @@ async def _resolver_dns_sistema(host: str, porta: int) -> list[str]:
     return [str(info[4][0]) for info in infos if info[4]]
 
 
-async def validar_url_publica_rag(url: str, resolver_ips: ResolverIPsFn | None = None) -> str:
-    """Valida URL HTTP/HTTPS pública bloqueando redes internas/loopback/link-local."""
+def validar_url_publica_sincrona(
+    url: str,
+    *,
+    esquemas: frozenset[str],
+    portas: frozenset[int],
+    normalizar_https: bool = False,
+) -> tuple[str, str, int, bool]:
+    """Valida esquema, credenciais, porta, host interno e IP literal sem I/O."""
     limpa = url.strip()
-    if "://" not in limpa:
+    if normalizar_https and "://" not in limpa:
         limpa = f"https://{limpa}"
     analisada = urlparse(limpa)
-    if analisada.scheme not in {"http", "https"} or not analisada.hostname:
-        raise ErroValidacaoDominio("Informe uma URL pública HTTP/HTTPS válida.")
+    if analisada.scheme not in esquemas or not analisada.hostname:
+        raise ErroValidacaoDominio("Informe uma URL pública válida.")
     if analisada.username or analisada.password:
         raise ErroValidacaoDominio("URLs com credenciais embutidas não são permitidas.")
-    if analisada.port not in {None, 80, 443}:
-        raise ErroValidacaoDominio("Apenas portas padrão HTTP/HTTPS (80/443) são permitidas.")
+    if analisada.port is not None and analisada.port not in portas:
+        raise ErroValidacaoDominio("Porta de rede não permitida para URL pública.")
     host = analisada.hostname.lower().rstrip(".")
     if host in _HOSTS_BLOQUEADOS or host.endswith((".local", ".internal", ".localhost")):
         raise ErroValidacaoDominio("Host interno ou local bloqueado por segurança (SSRF).")
-
+    porta = analisada.port or (443 if analisada.scheme == "https" else 80)
     try:
         if not _ip_eh_publico(host):
             raise ErroValidacaoDominio("Endereço IP privado ou reservado bloqueado (SSRF).")
-        return limpa
+        return limpa, host, porta, True
     except ValueError:
-        pass
+        return limpa, host, porta, False
 
-    porta = analisada.port or (443 if analisada.scheme == "https" else 80)
+
+async def validar_url_publica_rag(url: str, resolver_ips: ResolverIPsFn | None = None) -> str:
+    """Valida URL HTTP/HTTPS pública bloqueando redes internas/loopback/link-local."""
+    limpa, host, porta, eh_ip = validar_url_publica_sincrona(
+        url, esquemas=frozenset({"http", "https"}), portas=frozenset({80, 443}),
+        normalizar_https=True,
+    )
+    if eh_ip:
+        return limpa
     resolvedor = resolver_ips or _resolver_dns_sistema
     try:
         ips = await resolvedor(host, porta)

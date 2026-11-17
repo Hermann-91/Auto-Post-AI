@@ -44,6 +44,9 @@ def test_extrair_arquivos_txt_md_pdf_e_rejeitar_invalidos() -> None:
     nome_md, txt_md = ext.extrair_arquivo("../../guia.md", b"# Titulo\nConteudo artesanal.")
     assert nome_md == "guia.md" and "Conteudo artesanal." in txt_md
 
+    nome_win, _ = ext.extrair_arquivo("..\\..\\segredo.txt", b"Texto valido.")
+    assert nome_win == "segredo.txt"
+
     pdf_bytes = _criar_pdf_bytes("Cardapio Especial Cafe")
     nome_pdf, txt_pdf = ext.extrair_arquivo("cardapio.pdf", pdf_bytes)
     assert nome_pdf == "cardapio.pdf" and "Cardapio Especial Cafe" in txt_pdf
