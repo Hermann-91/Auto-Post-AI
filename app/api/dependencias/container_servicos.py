@@ -10,6 +10,7 @@ from fastapi import Depends, Request
 from app.api.dependencias.container_ia import ContainerIA
 from app.api.dependencias.provedores_ia import obter_container_ia
 from app.aplicacao.biblioteca import (
+    ServicoExclusaoMidiaPostUseCase,
     ServicoLimpezaPosPostagemUseCase,
     ServicoUploadCotaUseCase,
 )
@@ -61,6 +62,18 @@ def obter_limpeza_uc(
 ) -> ServicoLimpezaPosPostagemUseCase:
     """Monta caso de uso de limpeza pós-postagem preservando favoritas."""
     return ServicoLimpezaPosPostagemUseCase(
+        midia_repo=ia.midia_repo,
+        post_repo=ia.post_repo,
+        storage=ia.storage,
+    )
+
+
+def obter_exclusao_uc(
+    ia: Annotated[ContainerIA, Depends(obter_container_ia)],
+) -> ServicoExclusaoMidiaPostUseCase:
+    """Monta caso de uso para exclusão de cards da Agenda e mídias da Biblioteca."""
+    return ServicoExclusaoMidiaPostUseCase(
+        conta_repo=ia.conta_repo,
         midia_repo=ia.midia_repo,
         post_repo=ia.post_repo,
         storage=ia.storage,

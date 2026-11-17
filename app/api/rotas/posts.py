@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
+from app.api.dependencias.container_servicos import obter_exclusao_uc
 from app.api.dependencias.provedores_ia import obter_recriar_post_uc
 from app.api.dependencias.provedores_meta import obter_agendamento_uc
 from app.api.dependencias.usuario_atual import obter_usuario_atual
@@ -15,9 +16,11 @@ from app.api.schemas.postagens_meta import (
     CriarPostagemRequest,
     PostagemDetalheResponse,
     RecriarPostagemRequest,
+    ResultadoExclusaoPostagemResponse,
     ResultadoPublicacaoResponse,
     SubstituirMidiaPostagemRequest,
 )
+from app.aplicacao.biblioteca import ServicoExclusaoMidiaPostUseCase
 from app.aplicacao.ia import RecriarPostagemContextoUseCase
 from app.aplicacao.publicacao import (
     AgendarPostagemCmd,
@@ -177,3 +180,18 @@ async def substituir_midia_postagem(
         ctx.empresa_id, conta_ig_id, postagem_id, payload.nova_midia_id
     )
     return _to_post_detalhe(post)
+
+
+@router.delete("/{conta_ig_id}/{postagem_id}", response_model=ResultadoExclusaoPostagemResponse)
+async def excluir_postagem_agenda(
+    conta_ig_id: UUID,
+    postagem_id: UUID,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    uc: Annotated[ServicoExclusaoMidiaPostUseCase, Depends(obter_exclusao_uc)],
+) -> ResultadoExclusaoPostagemResponse:
+    """Exclui card da Agenda e remove imagens exclusivas (não favoritas) do storage/DB."""
+    res = await uc.excluir_postagem_agenda(ctx.empresa_id, conta_ig_id, postagem_id)
+    return ResultadoExclusaoPostagemResponse(
+        postagem_id=res.postagem_id, midias_removidas_qtd=res.midias_removidas_qtd,
+        chaves_removidas=res.chaves_removidas, midias_preservadas_qtd=res.midias_preservadas_qtd,
+    )

@@ -37,6 +37,18 @@ function criarCardMidia(item, contaId, recarregar) {
     }
   });
 
+  const btnExcluir = el("button", { type: "button", className: "btn-danger", text: "🗑️ Excluir" });
+  btnExcluir.addEventListener("click", async () => {
+    if (!window.confirm("Excluir permanentemente esta mídia da Biblioteca?")) return;
+    try {
+      const res = await apiFetch(`/biblioteca/${contaId}/${item.id}`, { method: "DELETE" });
+      notificar(`Mídia excluída (${formatarBytes(res.bytes_liberados)} liberados).`);
+      await recarregar();
+    } catch (err) {
+      notificar(err.message, "erro");
+    }
+  });
+
   const resumo = item.resumo_visual || item.chave_storage.split("/").pop();
   return el("article", { className: "media-item" }, [
     thumb,
@@ -46,7 +58,7 @@ function criarCardMidia(item, contaId, recarregar) {
         el("span", { className: "small muted", text: formatarBytes(item.tamanho_bytes) }),
       ]),
       el("p", { className: "small muted", text: resumo }),
-      el("div", { className: "row-actions" }, [btnCurtir, btnCurar]),
+      el("div", { className: "row-actions" }, [btnCurtir, btnCurar, btnExcluir]),
     ]),
   ]);
 }

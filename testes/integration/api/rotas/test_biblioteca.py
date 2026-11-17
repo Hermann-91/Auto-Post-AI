@@ -118,7 +118,16 @@ async def test_fluxo_biblioteca_upload_curtida_limpeza_e_anti_idor(tmp_path: Pat
         )
         assert invalido.status_code == 422
 
+        up3 = await cli_a.post(
+            f"/biblioteca/{conta_a}/upload",
+            data={"pasta": "originais"},
+            files={"arquivo": ("foto3.png", _png_bytes(), "image/png")},
+        )
+        assert up3.status_code == 201
+        assert (await cli_a.delete(f"/biblioteca/{conta_a}/{up3.json()['id']}")).status_code == 200
+
     async with AsyncClient(transport=transport, base_url="https://testserver") as cli_b:
         await _criar_tenant_com_conta(cli_b, app, "bib_b@emp.com")
         assert (await cli_b.get(f"/biblioteca/{conta_a}")).status_code == 422
         assert (await cli_b.post(f"/biblioteca/{conta_a}/limpar-pos-postagem")).status_code == 422
+        assert (await cli_b.delete(f"/biblioteca/{conta_a}/{m1['id']}")).status_code == 422

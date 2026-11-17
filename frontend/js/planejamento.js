@@ -69,7 +69,7 @@ export async function carregarPlanejamentoEPosts(contaId) {
     limpar(boxPosts);
     const ativos = (posts || []).filter((p) => p.status !== "CANCELADO");
     if (!ativos.length) return boxPosts.appendChild(el("p", { className: "muted", text: "Nenhuma postagem na Agenda." }));
-    for (const post of ativos) boxPosts.appendChild(criarCardAgenda(post, contaId, midiaPorChave, () => carregarPlanejamentoEPosts(contaId)));
+    for (const post of ativos) boxPosts.appendChild(criarCardAgenda(post, contaId, midiaPorChave, async () => { await carregarPlanejamentoEPosts(contaId); await carregarBiblioteca(contaId); }));
   }
 }
 

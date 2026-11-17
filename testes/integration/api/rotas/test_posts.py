@@ -106,6 +106,24 @@ async def test_fluxo_http_posts_agendamento_publicacao_e_isolamento(tmp_path: Pa
         canc = await cli_a.post(f"/posts/{conta_a.id}/{p2_id}/cancelar")
         assert canc.status_code == 200 and canc.json()["status"] == "CANCELADO"
 
+        m_excl = await app.state.ia_container.midia_repo.salvar(
+            MidiaBiblioteca(
+                empresa_id=emp_a, conta_ig_id=conta_a.id, pasta=PastaMidia.IA_CRIA,
+                chave_storage=f"{emp_a}/{conta_a.id}/IA-Cria/excl.jpg",
+                tipo_arquivo="image/jpeg", tamanho_bytes=500,
+            )
+        )
+        p3 = await cli_a.post(
+            "/posts",
+            json={"conta_ig_id": str(conta_a.id), "tipo_midia": "IMAGE",
+                  "midia_ids": [str(m_excl.id)], "legenda": "Excluir"},
+        )
+        exc = await cli_a.delete(f"/posts/{conta_a.id}/{p3.json()['id']}")
+        assert exc.status_code == 200 and exc.json()["midias_removidas_qtd"] == 1
+        assert await app.state.ia_container.midia_repo.buscar_por_id(
+            emp_a, conta_a.id, m_excl.id
+        ) is None
+
     async with AsyncClient(transport=transport, base_url="https://testserver") as cli_b:
         await cli_b.post(
             "/auth/register",
@@ -115,3 +133,4 @@ async def test_fluxo_http_posts_agendamento_publicacao_e_isolamento(tmp_path: Pa
             },
         )
         assert (await cli_b.get(f"/posts/{conta_a.id}")).status_code == 422
+        assert (await cli_b.delete(f"/posts/{conta_a.id}/{post_id}")).status_code == 422

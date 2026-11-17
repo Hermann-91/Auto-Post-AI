@@ -93,6 +93,13 @@ class InMemoryPostagemRepository:
             key=lambda p: p.agendado_para or ate_momento,
         )
 
+    async def remover(self, empresa_id: UUID, conta_ig_id: UUID, postagem_id: UUID) -> bool:
+        post = await self.buscar_por_id(empresa_id, conta_ig_id, postagem_id)
+        if post is None:
+            return False
+        self._itens.pop(postagem_id, None)
+        return True
+
 
 class InMemoryCustoRepository:
     """Armazena registros de custo OpenRouter em memória com soma mensal."""

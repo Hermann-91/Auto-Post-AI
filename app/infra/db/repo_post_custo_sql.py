@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -82,10 +84,7 @@ class SqlPostagemRepository:
         return postagem
 
     async def buscar_por_id(
-        self,
-        empresa_id: UUID,
-        conta_ig_id: UUID,
-        postagem_id: UUID,
+        self, empresa_id: UUID, conta_ig_id: UUID, postagem_id: UUID
     ) -> Postagem | None:
         async with self._sf() as session:
             stmt = select(PostagemModel).where(
@@ -97,10 +96,7 @@ class SqlPostagemRepository:
             return _para_postagem(modelo) if modelo is not None else None
 
     async def listar_por_conta(
-        self,
-        empresa_id: UUID,
-        conta_ig_id: UUID,
-        status: StatusPostagem | None = None,
+        self, empresa_id: UUID, conta_ig_id: UUID, status: StatusPostagem | None = None
     ) -> list[Postagem]:
         async with self._sf() as session:
             stmt = select(PostagemModel).where(
@@ -126,6 +122,16 @@ class SqlPostagemRepository:
             )
             modelos = (await session.scalars(stmt)).all()
             return [_para_postagem(m) for m in modelos]
+
+    async def remover(self, empresa_id: UUID, conta_ig_id: UUID, postagem_id: UUID) -> bool:
+        async with self._sf() as session, session.begin():
+            stmt = delete(PostagemModel).where(
+                PostagemModel.id == postagem_id,
+                PostagemModel.empresa_id == empresa_id,
+                PostagemModel.conta_ig_id == conta_ig_id,
+            )
+            res = await session.execute(stmt)
+            return bool(cast(CursorResult[Any], res).rowcount)
 
 
 class SqlCustoRepository:
@@ -164,11 +170,7 @@ class SqlCustoRepository:
         return inicio, fim
 
     async def _somar_periodo(
-        self,
-        empresa_id: UUID,
-        ano: int,
-        mes: int,
-        conta_ig_id: UUID | None = None,
+        self, empresa_id: UUID, ano: int, mes: int, conta_ig_id: UUID | None = None
     ) -> Decimal:
         inicio, fim = self._intervalo_mes(ano, mes)
         async with self._sf() as session:
@@ -187,10 +189,6 @@ class SqlCustoRepository:
         return await self._somar_periodo(empresa_id, ano, mes)
 
     async def somar_mes_por_conta(
-        self,
-        empresa_id: UUID,
-        conta_ig_id: UUID,
-        ano: int,
-        mes: int,
+        self, empresa_id: UUID, conta_ig_id: UUID, ano: int, mes: int
     ) -> Decimal:
         return await self._somar_periodo(empresa_id, ano, mes, conta_ig_id=conta_ig_id)

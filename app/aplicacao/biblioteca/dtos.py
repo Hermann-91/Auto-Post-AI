@@ -50,3 +50,22 @@ class ResultadoLimpezaDTO:
     bytes_liberados: int
     chaves_removidas: list[str]
     falhas: int
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoExclusaoPostagemDTO:
+    """Resumo da exclusão de postagem na Agenda e suas mídias órfãs."""
+
+    postagem_id: UUID
+    midias_removidas_qtd: int
+    chaves_removidas: list[str]
+    midias_preservadas_qtd: int
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoExclusaoMidiaDTO:
+    """Resumo da exclusão direta de mídia na Biblioteca."""
+
+    midia_id: UUID
+    chave_storage: str
+    bytes_liberados: int

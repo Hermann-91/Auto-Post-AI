@@ -64,6 +64,12 @@ class _MemPostRepo:
     async def listar_agendadas_pendentes(self, ate_momento: datetime) -> list[Postagem]:
         return []
 
+    async def remover(
+        self, empresa_id: UUID, conta_ig_id: UUID, postagem_id: UUID
+    ) -> bool:
+        _ = (empresa_id, conta_ig_id, postagem_id)
+        return False
+
 
 class _FakeStorageLimpeza:
     def __init__(self, falhar_chave: str | None = None) -> None:

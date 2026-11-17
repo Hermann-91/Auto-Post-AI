@@ -106,7 +106,9 @@ class EdicaoOrcamentoSemanalUseCase:
                 f"Não é possível editar itens de um plano com status '{plano.status.value}'."
             )
         if not itens_editados:
-            raise ErroValidacaoDominio("A grade semanal deve conter ao menos 1 publicação no resumo.")
+            raise ErroValidacaoDominio(
+                "A grade semanal deve conter ao menos 1 publicação no resumo."
+            )
 
         config = await self._config_repo.obter_ou_padrao(empresa_id, conta_ig_id)
         novos_itens: list[dict[str, Any]] = []
@@ -128,7 +130,9 @@ class EdicaoOrcamentoSemanalUseCase:
                     "usar_ia_imagem": usar_ia,
                     "editar_midia_id": str(editar_id) if editar_id else None,
                     "midia_base_ids": [str(m) for m in (bruto.get("midia_base_ids") or []) if m],
-                    "presets_melhoria": [str(p) for p in (bruto.get("presets_melhoria") or []) if p],
+                    "presets_melhoria": [
+                        str(p) for p in (bruto.get("presets_melhoria") or []) if p
+                    ],
                 }
             )
 

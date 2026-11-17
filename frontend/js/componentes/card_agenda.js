@@ -86,11 +86,13 @@ export function criarCardAgenda(post, contaId, midiaPorChave, recarregar) {
   });
 
   const btnLixeira = el("button", { type: "button", className: "btn-danger btn-icone", title: "Excluir da Agenda", text: "🗑️" });
-  if (jaPostado) btnLixeira.setAttribute("disabled", "disabled");
+  if (post.status === "PUBLICANDO") btnLixeira.setAttribute("disabled", "disabled");
   btnLixeira.addEventListener("click", async () => {
+    if (!window.confirm("Excluir este card e suas imagens exclusivas da Agenda?")) return;
     try {
-      await apiFetch(`/posts/${contaId}/${post.id}/cancelar`, { method: "POST" });
-      notificar("Postagem removida da Agenda.");
+      const r = await apiFetch(`/posts/${contaId}/${post.id}`, { method: "DELETE" });
+      const info = r.midias_removidas_qtd ? ` (${r.midias_removidas_qtd} imagem(ns) removida(s))` : "";
+      notificar(`Postagem excluída da Agenda${info}.`);
       await recarregar();
     } catch (err) { notificar(err.message, "erro"); }
   });

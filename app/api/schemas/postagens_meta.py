@@ -80,3 +80,12 @@ class ResultadoPublicacaoResponse(BaseModel):
     publicada: bool
     reagendada: bool
     motivo: str
+
+
+class ResultadoExclusaoPostagemResponse(BaseModel):
+    """Resumo da exclusão de postagem da Agenda e remoção de mídias exclusivas."""
+
+    postagem_id: UUID
+    midias_removidas_qtd: int
+    chaves_removidas: list[str]
+    midias_preservadas_qtd: int

@@ -49,3 +49,11 @@ class ResultadoLimpezaResponse(BaseModel):
     bytes_liberados: int
     chaves_removidas: list[str]
     falhas: int
+
+
+class ResultadoExclusaoMidiaResponse(BaseModel):
+    """Resumo da exclusão direta de mídia na Biblioteca."""
+
+    midia_id: UUID
+    chave_storage: str
+    bytes_liberados: int

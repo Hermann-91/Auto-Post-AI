@@ -8,17 +8,23 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response, UploadFile, status
 
-from app.api.dependencias.container_servicos import obter_limpeza_uc, obter_upload_cota_uc
+from app.api.dependencias.container_servicos import (
+    obter_exclusao_uc,
+    obter_limpeza_uc,
+    obter_upload_cota_uc,
+)
 from app.api.dependencias.provedores_ia import obter_prompts_rag_uc
 from app.api.dependencias.usuario_atual import obter_usuario_atual
 from app.api.schemas.biblioteca import (
     AlternarCurtidaRequest,
     MidiaBibliotecaResponse,
+    ResultadoExclusaoMidiaResponse,
     ResultadoLimpezaResponse,
     ResumoCotaResponse,
 )
 from app.aplicacao.biblioteca import (
     MidiaComUrlDTO,
+    ServicoExclusaoMidiaPostUseCase,
     ServicoLimpezaPosPostagemUseCase,
     ServicoUploadCotaUseCase,
     UploadMidiaCmd,
@@ -176,4 +182,18 @@ async def baixar_preview_autenticado(
         content=dados,
         media_type=midia.tipo_arquivo,
         headers={"Cache-Control": "private, max-age=300"},
+    )
+
+
+@router.delete("/{conta_ig_id}/{midia_id}", response_model=ResultadoExclusaoMidiaResponse)
+async def excluir_midia_biblioteca(
+    conta_ig_id: UUID,
+    midia_id: UUID,
+    ctx: Annotated[PayloadAccessToken, Depends(obter_usuario_atual)],
+    uc: Annotated[ServicoExclusaoMidiaPostUseCase, Depends(obter_exclusao_uc)],
+) -> ResultadoExclusaoMidiaResponse:
+    """Exclui mídia do storage e do banco caso não esteja em card ativo da Agenda."""
+    res = await uc.excluir_midia_biblioteca(ctx.empresa_id, conta_ig_id, midia_id)
+    return ResultadoExclusaoMidiaResponse(
+        midia_id=res.midia_id, chave_storage=res.chave_storage, bytes_liberados=res.bytes_liberados
     )
