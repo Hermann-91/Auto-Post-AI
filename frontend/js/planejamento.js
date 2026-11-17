@@ -70,6 +70,7 @@ export async function carregarPlanejamentoEPosts(contaId) {
 
   renderizarResumoSemanal({
     container: document.getElementById("resumo-semanal-box"), planos: planos || [], contaId, midiaPorId, planoSelecionadoId,
+    aoSelecionarPlano: (id) => { planoSelecionadoId = id || ""; },
     aoExecutarPlano: (p, itens, btn) => executarPlanoComJob(contaId, p, itens, btn),
     aoAtualizar: async (id) => { planoSelecionadoId = id || ""; await carregarPlanejamentoEPosts(contaId); await carregarBiblioteca(contaId); },
   });

@@ -47,12 +47,18 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
             "/painel/js/rag.js",
             "/painel/js/componentes/estudio_unificado.js",
             "/painel/js/componentes/seletor_midia_ia.js",
+            "/painel/js/componentes/item_grade.js",
             "/painel/js/componentes/resumo_orcamento.js",
             "/painel/js/componentes/modal_recriacao.js", "/painel/js/componentes/card_agenda.js",
         ):
             assert (await cli.get(rota)).status_code == 200
         icones_js = (await cli.get("/painel/js/icones.js")).text
+        resumo_js = (await cli.get("/painel/js/componentes/resumo_orcamento.js")).text
+        item_grade_js = (await cli.get("/painel/js/componentes/item_grade.js")).text
+        assert '<article id="resumo-semanal-box"' in html.text
         assert "createElementNS" in icones_js and "innerHTML" not in icones_js
+        assert "grade-detalhes" in resumo_js and "DELETE" in resumo_js
+        assert "innerHTML" not in resumo_js and "innerHTML" not in item_grade_js
         assert "--surface-inset" in (await cli.get("/painel/css/tokens.css")).text
         estudio_js = (await cli.get("/painel/js/componentes/estudio_unificado.js")).text
         card_js = (await cli.get("/painel/js/componentes/card_agenda.js")).text
