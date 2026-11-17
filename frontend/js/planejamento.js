@@ -33,7 +33,7 @@ function renderizarJobStatus(job) {
   limpar(box);
   box.append(
     el("div", { className: "row-between" }, [
-      el("strong", { className: "small", text: `⚙️ ${job.tipo_job} • ${job.etapa_atual}` }),
+      el("strong", { className: "small btn-inline-icone" }, iconeTexto("refresh", `${job.tipo_job} • ${job.etapa_atual}`, { tamanho: 14 })),
       el("span", { className: "badge", text: `${job.progresso_atual}/${job.progresso_total} (${job.percentual}%)` }),
     ]),
     el("div", { className: "progress-track" }, [
@@ -96,6 +96,7 @@ export async function carregarPlanejamentoEPosts(contaId) {
   });
 
   cacheAgenda = { contaId, ativos: (posts || []).filter((p) => p.status !== "CANCELADO"), midiaPorChave };
+  estudio?.recarregarSeletor();
   renderizarListaAgenda();
   if (jobsAtivos?.length) {
     estudio?.definirOcupado(true);

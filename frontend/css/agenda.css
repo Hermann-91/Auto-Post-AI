@@ -6,7 +6,6 @@
 .conta-tab-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border-color: transparent; }
 
 .container-largo { max-width: 1320px; margin: 0.8rem auto 2rem; padding: 0 1rem; }
-.grid-2-agenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 1rem; }
 
 textarea {
   font: inherit;

@@ -1,25 +1,26 @@
 import { apiFetch, apiJson, executarJobIA } from "/painel/js/api.js";
 import { criarSeletorMidiaIA, PRESETS_MELHORIA } from "/painel/js/componentes/seletor_midia_ia.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
+import { iconeTexto } from "/painel/js/icones.js";
 
-const RAPIDOS_MODAL = [
+export const ACOES_RAPIDAS_IMAGEM = [
   ["Mais natural", "Deixar a fotografia mais natural e documental, sem aspecto artificial."],
   ["Sem pessoas", "Remover pessoas da cena mantendo o foco no ambiente e nos objetos."],
   ["Trocar ângulo", "Recriar a foto com outro ângulo e enquadramento distinto."],
 ];
 
-function criarBaseModal(titulo) {
+function criarBaseModal(titulo, icone = "sparkles") {
   const backdrop = el("div", { className: "modal-backdrop", role: "dialog", "aria-modal": "true" });
-  const btnFechar = el("button", { type: "button", className: "btn-ghost small", text: "✕ Fechar" });
+  const btnFechar = el("button", { type: "button", className: "btn-ghost btn-sm", text: "Fechar" });
   const card = el("div", { className: "modal-card" }, [
-    el("div", { className: "row-between" }, [el("h3", { text: titulo }), btnFechar]),
+    el("div", { className: "row-between" }, [
+      el("h3", { className: "btn-inline-icone" }, iconeTexto(icone, titulo, { tamanho: 17 })),
+      btnFechar,
+    ]),
   ]);
   backdrop.appendChild(card);
 
-  const fechar = () => {
-    document.removeEventListener("keydown", aoEsc);
-    backdrop.remove();
-  };
+  const fechar = () => { document.removeEventListener("keydown", aoEsc); backdrop.remove(); };
   const aoEsc = (e) => { if (e.key === "Escape") fechar(); };
   btnFechar.addEventListener("click", fechar);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) fechar(); });
@@ -32,7 +33,7 @@ async function carregarCulturaRag(boxRag, contaId) {
   try {
     const fontes = await apiFetch(`/contas/${contaId}/rag`);
     limpar(boxRag);
-    boxRag.appendChild(el("strong", { className: "small", text: "📚 Cultura da Conta (RAG) aplicada:" }));
+    boxRag.appendChild(el("strong", { className: "small btn-inline-icone" }, iconeTexto("bookOpen", "Cultura da Conta (RAG) aplicada:", { tamanho: 14 })));
     if (!fontes || !fontes.length) {
       boxRag.appendChild(el("p", { className: "small muted", text: "Nenhuma fonte RAG cadastrada; será usada a Persona da conta." }));
       return;
@@ -49,7 +50,7 @@ async function carregarCulturaRag(boxRag, contaId) {
 
 export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, promptAtual, aoConcluir }) {
   const ehImagem = alvo === "imagem";
-  const { card, fechar } = criarBaseModal(ehImagem ? "✨ Recriar / Melhorar Imagem (IA + RAG)" : "✍️ Editar ou Recriar Legenda");
+  const { card, fechar } = criarBaseModal(ehImagem ? "Recriar / Melhorar Imagem (IA + RAG)" : "Editar ou Recriar Legenda", ehImagem ? "wand" : "pencil");
 
   if (ehImagem) {
     const url = midiaAtual ? `/biblioteca/${contaId}/midias/${midiaAtual.id}/conteudo` : "";
@@ -59,13 +60,13 @@ export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, pro
         : el("img", { src: url, className: "modal-preview-img", alt: "Imagem atual" }))
       : el("p", { className: "small muted", text: "Este card ainda não possui imagem; será gerada uma nova." });
     card.appendChild(preview);
-    if (promptAtual) card.appendChild(el("p", { className: "small muted", text: `🎨 Prompt atual: ${promptAtual}` }));
+    if (promptAtual) card.appendChild(el("p", { className: "small muted", text: `Prompt atual: ${promptAtual}` }));
   } else {
     const editavel = !["PUBLICANDO", "PUBLICADO", "CANCELADO"].includes(post.status);
     const txtManual = el("textarea", { rows: "4", placeholder: post.tipo_midia === "STORIES" ? "Stories não aceita legenda na Meta." : "Edite a legenda manualmente..." });
     txtManual.value = post.legenda || "";
     if (!editavel || post.tipo_midia === "STORIES") txtManual.setAttribute("disabled", "disabled");
-    const btnSalvarManual = el("button", { type: "button", className: "btn-outline btn-sm", text: "💾 Salvar Texto Manual ($0)" });
+    const btnSalvarManual = el("button", { type: "button", className: "btn-outline btn-sm btn-inline-icone" }, iconeTexto("check", "Salvar Texto Manual ($0)", { tamanho: 14 }));
     if (!editavel || post.tipo_midia === "STORIES") btnSalvarManual.setAttribute("disabled", "disabled");
     btnSalvarManual.addEventListener("click", async () => {
       btnSalvarManual.setAttribute("disabled", "disabled");
@@ -79,16 +80,14 @@ export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, pro
         btnSalvarManual.removeAttribute("disabled");
       }
     });
-    card.appendChild(el("div", { className: "post-texto-box" }, [
+    card.appendChild(el("div", { className: "post-texto-box stack-sm" }, [
       el("span", { className: "small muted", text: "Edição manual da legenda ($0):" }),
       txtManual,
       btnSalvarManual,
     ]));
   }
 
-  const boxRag = el("div", { className: "rag-cultura-box stack-sm" }, [
-    el("span", { className: "small muted", text: "Carregando Cultura (RAG)..." }),
-  ]);
+  const boxRag = el("div", { className: "rag-cultura-box stack-sm" }, [el("span", { className: "small muted", text: "Carregando Cultura (RAG)..." })]);
   card.appendChild(boxRag);
   carregarCulturaRag(boxRag, contaId);
 
@@ -105,36 +104,24 @@ export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, pro
       const chkEditar = el("input", { type: "checkbox" });
       chkEditar.checked = editarAtual;
       chkEditar.addEventListener("change", () => { editarAtual = chkEditar.checked; });
-      card.appendChild(el("label", { className: "check small" }, [
-        chkEditar,
-        el("span", { text: "Editar a imagem atual (desmarque para gerar uma nova do zero)" }),
-      ]));
+      card.appendChild(el("label", { className: "switch small" }, [chkEditar, el("span", { text: "Editar a imagem atual (desmarque para gerar nova)" })]));
     }
   }
 
-  const txtCtx = el("textarea", {
-    rows: "3",
-    placeholder: ehImagem ? "Descreva ajustes visuais ou novo cenário..." : "Ex.: deixe o tom mais urgente, inclua CTA para comentários...",
-  });
+  const txtCtx = el("textarea", { rows: "3", placeholder: ehImagem ? "Descreva ajustes visuais ou novo cenário..." : "Ex.: deixe o tom mais urgente, inclua CTA para comentários..." });
   card.appendChild(el("label", {}, [el("span", { text: "Contexto adicional para a IA" }), txtCtx]));
 
-  const btnRecriar = el("button", { type: "button", className: "btn-primary", text: "✨ Recriar com IA" });
+  const btnRecriar = el("button", { type: "button", className: "btn-primary btn-inline-icone" }, iconeTexto("sparkles", "Recriar com IA", { tamanho: 15 }));
   const btnCancelar = el("button", { type: "button", className: "btn-ghost", text: "Cancelar" });
   btnCancelar.addEventListener("click", fechar);
   const executarRecriacao = async (ctxManual = null) => {
     btnRecriar.setAttribute("disabled", "disabled");
-    btnRecriar.textContent = "Recriando...";
+    limpar(btnRecriar);
+    btnRecriar.append(...iconeTexto("refresh", "Recriando...", { tamanho: 15 }));
     try {
       await executarJobIA({
         contaId, tipoJob: "RECRIAR_POSTAGEM", chaveIdempotencia: `mod-${post.id}-${alvo}-${Date.now()}`,
-        payload: {
-          recriar_postagem: {
-            postagem_id: post.id, alvo,
-            contexto_adicional: (ctxManual ?? txtCtx.value).trim(),
-            presets_melhoria: [...presets],
-            midia_base_id: ehImagem && editarAtual && midiaAtual ? midiaAtual.id : null,
-          },
-        },
+        payload: { recriar_postagem: { postagem_id: post.id, alvo, contexto_adicional: (ctxManual ?? txtCtx.value).trim(), presets_melhoria: [...presets], midia_base_id: ehImagem && editarAtual && midiaAtual ? midiaAtual.id : null } },
       });
       notificar(`${ehImagem ? "Imagem" : "Legenda"} recriada com Cultura RAG!`);
       fechar();
@@ -142,35 +129,29 @@ export async function abrirModalRecriacao({ post, alvo, contaId, midiaAtual, pro
     } catch (err) {
       notificar(err.message, "erro");
       btnRecriar.removeAttribute("disabled");
-      btnRecriar.textContent = "✨ Recriar com IA";
+      limpar(btnRecriar);
+      btnRecriar.append(...iconeTexto("sparkles", "Recriar com IA", { tamanho: 15 }));
     }
   };
   if (ehImagem) {
-    const barraRapidos = el("div", { className: "row-actions" }, RAPIDOS_MODAL.map(([lbl, ctx]) => {
+    card.appendChild(el("div", { className: "row-actions" }, ACOES_RAPIDAS_IMAGEM.map(([lbl, ctx]) => {
       const b = el("button", { type: "button", className: "btn-outline btn-sm", text: lbl });
       b.addEventListener("click", () => executarRecriacao(ctx));
       return b;
-    }));
-    card.appendChild(barraRapidos);
+    })));
   }
   btnRecriar.addEventListener("click", () => executarRecriacao());
   card.appendChild(el("div", { className: "row-actions" }, [btnRecriar, btnCancelar]));
 }
 
 export function abrirModalTrocarFoto({ post, contaId, aoConcluir }) {
-  const { card, fechar } = criarBaseModal("📷 Substituir Foto / Mídia do Card");
+  const { card, fechar } = criarBaseModal("Substituir Foto / Mídia do Card", "image");
   const boxSeletor = el("div", { className: "seletor-midia-box" });
   card.appendChild(boxSeletor);
   const ehCarrossel = post.tipo_midia === "CAROUSEL";
+  const seletor = criarSeletorMidiaIA({ containerEl: boxSeletor, obterContaAtiva: () => contaId, multiplo: ehCarrossel, permitirModoIA: false });
 
-  const seletor = criarSeletorMidiaIA({
-    containerEl: boxSeletor,
-    obterContaAtiva: () => contaId,
-    multiplo: ehCarrossel,
-    permitirModoIA: false,
-  });
-
-  const btnAplicar = el("button", { type: "button", className: "btn-primary", text: "✅ Aplicar Foto no Card" });
+  const btnAplicar = el("button", { type: "button", className: "btn-primary btn-inline-icone" }, iconeTexto("check", "Aplicar Foto no Card", { tamanho: 15 }));
   const btnCancelar = el("button", { type: "button", className: "btn-ghost", text: "Cancelar" });
   btnCancelar.addEventListener("click", fechar);
   btnAplicar.addEventListener("click", async () => {

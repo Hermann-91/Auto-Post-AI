@@ -62,7 +62,8 @@ async def test_painel_estatico_config_publica_e_csp() -> None:
         assert ".grid-agenda-3" in ag and ".grid-agenda-4" not in ag
         assert ".agenda-acoes-linha-data" in ag and ".btn-circular-recriar" not in ag
         assert "MANUAL_ZERO" in es and "SO_TEXTO" in es and "switch small" in es
-        assert "estudio-topo-barra" in es and "Aguardando mídia" in ca and "Mais natural" in ca
+        assert "estudio-topo-barra" in es and "Aguardando mídia" in ca
+        assert "ACOES_RAPIDAS_IMAGEM" in ca and "Mais natural" in t[f"{p}/modal_recriacao.js"]
         assert 'text: "o"' not in ca and "btn-circular-recriar" not in ca
         assert "agenda-acoes-linha-cta" in ca and "criarIcone" in ca
         assert "SEM_MIDIA" in t[f"{p}/agenda_filtros.js"]

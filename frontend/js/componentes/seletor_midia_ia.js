@@ -1,5 +1,6 @@
 import { apiFetch } from "/painel/js/api.js";
 import { el, limpar, notificar } from "/painel/js/dom.js";
+import { iconeTexto } from "/painel/js/icones.js";
 
 export const PRESETS_MELHORIA = [
   { id: "fullhd", label: "Melhorar Resolução (FullHD)" },
@@ -54,9 +55,13 @@ function montarPainelMelhoria(estado, mostrarLogo, notificarMudanca) {
   const inputExtra = el("input", { type: "text", placeholder: "Instruções extras para melhoria da imagem...", value: estado.promptExtra });
   inputExtra.addEventListener("input", () => { estado.promptExtra = inputExtra.value; notificarMudanca(); });
   const dica = estado.selecionadas.length
-    ? "✨ Melhorar Imagem Anexada com IA (sem presets/instrução, usa a foto original a $0)"
-    : "✨ Ajustes Ópticos & Estúdio IA";
-  return el("div", { className: "stack-sm" }, [el("span", { className: "small muted", text: dica }), el("div", { className: "seletor-presets" }, chips), inputExtra]);
+    ? "Melhorar Imagem Anexada com IA (sem presets/instrução, usa a foto original a $0)"
+    : "Ajustes Ópticos & Estúdio IA";
+  return el("div", { className: "stack-sm" }, [
+    el("span", { className: "small muted btn-inline-icone" }, iconeTexto("sparkles", dica, { tamanho: 13 })),
+    el("div", { className: "seletor-presets" }, chips),
+    inputExtra,
+  ]);
 }
 
 export function criarSeletorMidiaIA({ idContainer, containerEl = null, obterContaAtiva, multiplo = false, permitirModoIA = true, mostrarLogo = false, aoMudar = null }) {
@@ -108,9 +113,16 @@ export function criarSeletorMidiaIA({ idContainer, containerEl = null, obterCont
 
   function renderizar() {
     limpar(raiz);
-    const modos = [...(permitirModoIA && !estado.bloquearIA ? [["ia", "🤖 Criar do Zero (IA)"]] : []), ["pc", "💻 Anexar PC/Mobile"], ["biblioteca", "🗂️ Da Biblioteca"]];
-    raiz.appendChild(el("div", { className: "seletor-modos" }, modos.map(([id, label]) => {
-      const btn = el("button", { type: "button", className: `tab-btn small ${estado.modo === id ? "active" : ""}`, text: label });
+    const modos = [
+      ...(permitirModoIA && !estado.bloquearIA ? [["ia", "sparkles", "Criar do Zero (IA)"]] : []),
+      ["pc", "upload", "Anexar PC/Mobile"],
+      ["biblioteca", "image", "Da Biblioteca"],
+    ];
+    raiz.appendChild(el("div", { className: "seletor-modos" }, modos.map(([id, icone, label]) => {
+      const btn = el("button", {
+        type: "button",
+        className: `tab-btn small btn-inline-icone ${estado.modo === id ? "active" : ""}`,
+      }, iconeTexto(icone, label, { tamanho: 14 }));
       btn.addEventListener("click", () => {
         estado.modo = id;
         if (id === "ia") estado.selecionadas = [];

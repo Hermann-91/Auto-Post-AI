@@ -1,5 +1,5 @@
 import { apiFetch, apiJson, executarJobIA } from "/painel/js/api.js";
-import { abrirModalRecriacao, abrirModalTrocarFoto } from "/painel/js/componentes/modal_recriacao.js";
+import { ACOES_RAPIDAS_IMAGEM, abrirModalRecriacao, abrirModalTrocarFoto } from "/painel/js/componentes/modal_recriacao.js";
 import { el, notificar } from "/painel/js/dom.js";
 import { criarIcone, iconeTexto } from "/painel/js/icones.js";
 
@@ -10,12 +10,6 @@ function paraInputLocal(isoStr) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 }
-
-const ACOES_RAPIDAS = [
-  ["Mais natural", "Deixar a fotografia mais natural e documental, sem aspecto artificial."],
-  ["Sem pessoas", "Remover pessoas da cena mantendo o foco no ambiente e nos objetos."],
-  ["Trocar ângulo", "Recriar a foto com outro ângulo e enquadramento distinto."],
-];
 
 const STATUS_POST_META = {
   RASCUNHO: { rotulo: "Rascunho", classe: "" },
@@ -107,7 +101,7 @@ export function criarCardAgenda(post, contaId, midiaPorChave, recarregar) {
   ]);
 
   const barraRapida = (!semMidia && !bloqueado && principal && !principal.tipo_arquivo.startsWith("video/") && post.tipo_midia !== "REELS")
-    ? el("div", { className: "agenda-acoes-rapidas" }, ACOES_RAPIDAS.map(([lbl, ctx]) => {
+    ? el("div", { className: "agenda-acoes-rapidas" }, ACOES_RAPIDAS_IMAGEM.map(([lbl, ctx]) => {
       const b = el("button", { type: "button", className: "btn-ghost btn-sm", text: lbl });
       b.addEventListener("click", () => dispararImgRapida(b, ctx, principal.id));
       return b;

@@ -31,16 +31,21 @@ async def test_abas_secundarias_kpis_editor_json_e_csp() -> None:
 
         rotas = (
             "/painel/css/styles.css",
+            "/painel/css/agenda.css",
             "/painel/css/paineis.css",
             "/painel/js/auth.js",
             "/painel/js/biblioteca.js",
             "/painel/js/config_custos.js",
+            "/painel/js/planejamento.js",
             "/painel/js/rag.js",
             "/painel/js/icones.js",
             "/painel/js/componentes/custos_kpi.js",
             "/painel/js/componentes/editor_json_config.js",
             "/painel/js/componentes/estado_vazio.js",
             "/painel/js/componentes/agenda_filtros.js",
+            "/painel/js/componentes/card_agenda.js",
+            "/painel/js/componentes/modal_recriacao.js",
+            "/painel/js/componentes/seletor_midia_ia.js",
         )
         resps = {r: await cli.get(r) for r in rotas}
         assert all(resp.status_code == 200 for resp in resps.values())
@@ -69,6 +74,11 @@ async def test_abas_secundarias_kpis_editor_json_e_csp() -> None:
         assert ".rag-ingestao-grid" in paineis and "@media (max-width: 640px)" in paineis
         assert "min(100%, 300px)" in t["/painel/css/styles.css"]
         assert "progress-warn" in t["/painel/css/styles.css"]
+        assert ".post-card-visual" not in t["/painel/css/styles.css"]
+        assert ".grid-2-agenda" not in t["/painel/css/agenda.css"]
+        assert "recarregarSeletor" in t["/painel/js/planejamento.js"]
+        assert "ACOES_RAPIDAS_IMAGEM" in t["/painel/js/componentes/card_agenda.js"]
+        assert "ACOES_RAPIDAS_IMAGEM" in t["/painel/js/componentes/modal_recriacao.js"]
 
         ic = t["/painel/js/icones.js"]
         icones_esperados = (
@@ -78,6 +88,7 @@ async def test_abas_secundarias_kpis_editor_json_e_csp() -> None:
         for nome in icones_esperados:
             assert nome in ic
 
+        emojis_legados = ("✨", "⚙", "🤖", "💻", "🗂", "📚", "🎨", "💾", "📷", "✅", "✕")
         exts = {".html", ".js", ".css"}
         arquivos_front = [
             p for p in Path("frontend").rglob("*") if p.is_file() and p.suffix in exts
@@ -86,4 +97,6 @@ async def test_abas_secundarias_kpis_editor_json_e_csp() -> None:
         for arq in arquivos_front:
             conteudo = arq.read_text(encoding="utf-8")
             assert "innerHTML" not in conteudo, f"innerHTML proibido encontrado em {arq}"
+            for em in emojis_legados:
+                assert em not in conteudo, f"Emoji legado {em} encontrado em {arq}"
             assert len(conteudo.splitlines()) <= 200, f"{arq} excede 200 linhas"
